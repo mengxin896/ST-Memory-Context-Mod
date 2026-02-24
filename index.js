@@ -11520,66 +11520,6 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
         }, 200); // 延迟 200ms，等待 SillyTavern 上下文完全切换
     }
 
-    // ✨✨✨ 核心逻辑：智能切分法 (防呆增强版) ✨✨✨
-    function applyContextLimit(chat) {
-        // 1. 安全检查
-        const limit = parseInt(C.contextLimitCount) || 30;
-        if (!C.contextLimit || !chat || chat.length <= limit) return chat;
-
-        console.log(`✂️ [隐藏楼层] 智能裁剪开始，目标保留: ${limit} 条`);
-
-        // 2. 识别"受保护区域" (Protected Zone)
-        // 逻辑：酒馆的 Prefill (Assistant起手式) 永远位于 Prompt 的【最后一条】。
-        // 我们强制把最后一条消息排除在"可裁剪名单"之外，无论它是谁，无论它说什么。
-        const lastMsgIndex = chat.length - 1;
-
-        // 3. 筛选可裁剪的索引
-        let dialogueMsgIndices = [];
-        chat.forEach((msg, index) => {
-            // ✅ 新增：定义过滤关键词（针对预设注入的指令）
-            const content = msg.content || msg.mes || '';
-            const isInstruction = content.includes('thinking标签') ||
-                                  content.includes('<writing-style>') ||
-                                  content.includes('<must-read-materials>');
-
-            // 条件A: 不能是 System (系统指令)
-            // 条件B: 不能是 Last Message (预设 Prefill / 正在进行的对话)
-            // 条件C: 不能是前2条消息 (越狱握手/触发消息，如 Kemini 的 Handshake)
-            // ✅ 条件D: 不能是预设指令 (新增 !isInstruction)
-            if (msg.role !== 'system' && index !== lastMsgIndex && index > 1 && !isInstruction) {
-                dialogueMsgIndices.push(index);
-            }
-        });
-
-        // 4. 计算需要移除的数量
-        const totalDialogue = dialogueMsgIndices.length;
-        const toKeep = limit; // 用户设置的保留条数
-        const toSkip = Math.max(0, totalDialogue - toKeep); // 需要删掉多少条旧的
-
-        if (toSkip === 0) return chat;
-
-        // 5. 确定移除名单
-        const indicesToRemove = new Set(dialogueMsgIndices.slice(0, toSkip));
-
-        // [额外保险]：如果倒数第二条也是 Assistant（罕见情况），也保下来
-        if (chat.length > 1) {
-            const secondLastIndex = chat.length - 2;
-            const secondLastMsg = chat[secondLastIndex];
-            if (secondLastMsg.role === 'assistant' || secondLastMsg.role === 'model') {
-                 if (indicesToRemove.has(secondLastIndex)) {
-                     indicesToRemove.delete(secondLastIndex);
-                     console.log('🛡️ [隐藏楼层] 额外保护倒数第二条 Assistant 消息');
-                 }
-            }
-        }
-
-        // 6. 执行裁剪
-        const newChat = chat.filter((msg, index) => !indicesToRemove.has(index));
-
-        console.log(`✅ [隐藏楼层] 裁剪完成。原始: ${chat.length}, 剩余: ${newChat.length} (已严格保护末尾 Prefill)`);
-        return newChat;
-    }
-
     // ============================================================
     // 🔥 独立向量检索函数 (用于 Hook 和 Fetch Hijack)
     // ============================================================

@@ -316,6 +316,8 @@
     async function applyNativeHiding() {
         // 1. Check Config
         const C = window.Gaigai.config_obj;
+        // 🔴 全局主开关守卫
+        if (!C.masterSwitch) return;
         if (!C.autoSummaryHideContext) return;
 
         const m = window.Gaigai.m;
@@ -351,13 +353,11 @@
         // 6. 获取已隐藏的楼层
         const alreadyHidden = getHiddenMessageIndices();
 
-        // 7. 找到"上次隐藏边界"（从0开始最后一个连续隐藏的索引）
+        // 7. 找到"上次隐藏边界"（在目标范围内，从后往前找到索引最大的已隐藏楼层）
         let lastHiddenBoundary = -1;
-        for (let i = 0; i <= rangeEnd; i++) {
+        for (let i = rangeEnd; i >= 0; i--) {
             if (alreadyHidden.has(i)) {
                 lastHiddenBoundary = i;
-            } else {
-                // 遇到第一个未隐藏的，停止（只找连续的）
                 break;
             }
         }
@@ -457,6 +457,8 @@
     async function applyContextLimitHiding() {
         // ⚠️ 已移除配置同步 - 发送前不需要同步，直接读取内存中的配置
         const C = window.Gaigai.config_obj;
+        // 🔴 全局主开关守卫
+        if (!C.masterSwitch) return;
         const m = window.Gaigai.m;
 
         // 1. 检查是否启用上下文限制
@@ -508,13 +510,11 @@
         // 7. 获取已隐藏的楼层
         const alreadyHidden = getHiddenMessageIndices();
 
-        // 8. 找到"上次隐藏边界"（从0开始最后一个连续隐藏的索引）
+        // 8. 找到"上次隐藏边界"（在目标范围内，从后往前找到索引最大的已隐藏楼层）
         let lastHiddenBoundary = -1;
-        for (let i = 0; i <= hideRangeEnd; i++) {
+        for (let i = hideRangeEnd; i >= 0; i--) {
             if (alreadyHidden.has(i)) {
                 lastHiddenBoundary = i;
-            } else {
-                // 遇到第一个未隐藏的，停止（只找连续的）
                 break;
             }
         }
