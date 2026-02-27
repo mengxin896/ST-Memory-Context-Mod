@@ -1247,6 +1247,12 @@
 
         // ✨✨✨ 核心修复：增强版熔断保护 (防止空数据覆盖)
         save(force = false, immediate = false) {
+            // 🛡️[终极防空盾]：如果当前正在切换会话/加载数据，绝对禁止任何保存行为！
+            if (typeof isChatSwitching !== 'undefined' && isChatSwitching) {
+                console.log('🛡️ [保存拦截] 会话正在加载中，禁止保存以防将临时空表写入硬盘！');
+                return;
+            }
+
             const id = this.gid();
             if (!id) return;
             const ctx = this.ctx();
@@ -11494,9 +11500,13 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
 
                 // 策略 A：如果我们有这一楼的快照（说明是切回了已存在的分支）
                 if (snapshotHistory[targetKey]) {
-                    console.log(`⚡ [ochat] 检测到已知分支，正在回档至 [${targetKey}]...`);
-                    // 强制回档！让表格回到那一楼的样子
-                    restoreSnapshot(targetKey, true);
+                    // ✅ 增加模式判断：批量填表模式下不回滚
+                    if (C.enabled && !C.autoBackfill) {
+                        console.log(`⚡ [ochat] 检测到已知分支，正在回档至 [${targetKey}]...`);
+                        restoreSnapshot(targetKey, true);
+                    } else {
+                        console.log(`⏭️ [ochat] 当前为批量/非实时模式，跳过分支回档保护数据。`);
+                    }
                 }
                 // 策略 B：如果没有这一楼的快照（说明可能是刚加载，或者快照丢了）
                 // 我们尝试找找上一楼的，或者相信 m.load() 从硬盘读出来的数据
@@ -12457,6 +12467,12 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
 
                 // 监听 Swipe 事件 (切换回复)
                 x.eventSource.on(x.event_types.MESSAGE_SWIPED, function (id) {
+                    // 🛡️[Swipe拦截] 忽略酒馆初始化/加载聊天时自动触发的假 Swipe
+                    if (typeof isChatSwitching !== 'undefined' && isChatSwitching) {
+                        console.log('🛡️ [Swipe拦截] 会话正在加载中，忽略初始化触发的假分支切换。');
+                        return;
+                    }
+
                     console.log(`↔️ [Swipe触发] 第 ${id} 楼正在切换分支...`);
 
                     // 🚩 设置Swipe标志，通知后续的omsg跳过智能保护
