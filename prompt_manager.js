@@ -1,6 +1,6 @@
 // ========================================================================
 // 提示词管理器 - Prompt Manager for Memory Table Extension
-// 版本: 2.1.5
+// 版本: 2.1.8
 // ========================================================================
 (function() {
     'use strict';
@@ -15,7 +15,7 @@
 
     // ===== 常量定义 =====
     const PROFILE_KEY = 'gg_profiles';  // 预设数据存储键
-    const PROMPT_VERSION = 4.9;         // 提示词版本号
+    const PROMPT_VERSION = 5.0;         // 提示词版本号
 
     // ========================================================================
     // 默认提示词定义区
@@ -108,7 +108,7 @@ Read and process the following narrative stream now.
 🔴【首要检查】表格是否为空？
 - ❓表格是否完全没有数据？查看【当前表格状态参考】中是否显示"(当前暂无数据)"
 - ✅是 -> 这是【全新开始】，必须使用 insertRow(0, {...})，并且**必须填写完整的日期和开始时间**！
-  - ❌ 严禁遗漏日期列（第0列）！格式："2024年3月15日"
+  - ❌ 根据故事中的时间背景记录日期,严禁遗漏日期列（第0列）！格式："YYYY年MM月DD日"
   - ❌ 严禁遗漏开始时间列（第1列）！格式："上午(08:30)" 或 "HH:mm"
 - ❌否 -> 表格有数据，继续检查日期：
 
@@ -180,7 +180,7 @@ Read and process the following narrative stream now.
 🔴🔴🔴【强制日期规则】🔴🔴🔴
 当【当前表格状态参考】中显示"(当前暂无数据)"时，表示表格完全为空：
 1. 必须使用 insertRow(0, {...}) 创建第一行
-2. 第0列（日期）必须填写完整日期，格式："2024年3月15日"
+2. 第0列（日期）必须填写完整日期，格式："YYYY年MM月DD日"
 3. 第1列（开始时间）必须填写时间，格式："上午(08:30)" 或 "HH:mm"
 4. ❌ 严禁省略日期列！
 5. ❌ 严禁省略时间列！
@@ -189,7 +189,7 @@ Read and process the following narrative stream now.
 【指令语法示例】
 
 ✅ 第一天开始（表格为空，新增第0行）【必须填写日期和时间】:
-<Memory><!-- insertRow(0, {0: "2024年3月15日", 1: "上午(08:30)", 2: "", 3: "在村庄接受长老委托，前往迷雾森林寻找失落宝石", 4: "进行中"})--></Memory>
+<Memory><!-- insertRow(0, {0: "YYYY年MM月DD日", 1: "上午(HH:mm)", 2: "", 3: "在村庄接受长老委托，前往迷雾森林寻找失落宝石", 4: "进行中"})--></Memory>
 
 ✅ 同一天推进（只写新事件，系统会自动追加到列3）:
 <Memory><!-- updateRow(0, 0, {3: "在迷雾森林遭遇神秘商人艾莉娅，获得线索：宝石在古神殿深处"})--></Memory>
@@ -198,23 +198,23 @@ Read and process the following narrative stream now.
 <Memory><!-- updateRow(0, 0, {3: "在森林露营休息"})--></Memory>
 
 ✅ 同一天完结（只需填写完结时间和状态）:
-<Memory><!-- updateRow(0, 0, {2: "晚上(22:00)", 4: "暂停"})--></Memory>
+<Memory><!-- updateRow(0, 0, {2: "晚上(HH:mm)", 4: "暂停"})--></Memory>
 
 ✅ 跨天处理（完结前一天 + 新增第二天）:
-<Memory><!-- updateRow(0, 0, {2: "深夜(23:50)", 4: "已完成"})
-insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿继续探索，寻找宝石线索", 4: "进行中"})--></Memory>
+<Memory><!-- updateRow(0, 0, {2: "深夜(HH:mm)", 4: "已完成"})
+insertRow(0, {0: "YYYY年MM月DD日", 1: "凌晨(HH:mm)", 2: "", 3: "在古神殿继续探索，寻找宝石线索", 4: "进行中"})--></Memory>
 
 ✅ 新增支线:
-<Memory><!-- insertRow(1, {0: "进行中", 1: "艾莉娅的委托", 2: "2024年3月15日·下午(14:00)", 3: "", 4: "艾莉娅请求帮忙寻找失散的妹妹", 5: "艾莉娅"})--></Memory>
+<Memory><!-- insertRow(1, {0: "进行中", 1: "艾莉娅的委托", 2: "YYYY年MM月DD日·下午(HH:mm)", 3: "", 4: "艾莉娅请求帮忙寻找失散的妹妹", 5: "艾莉娅"})--></Memory>
 
 ✅ 新增人物档案:
-<Memory><!-- insertRow(3, {0: "艾莉娅", 1: "23", 2: "神秘商人", 3: "迷雾森林", 4: "神秘冷静，知识渊博", 5: "有一个失散的妹妹，擅长占卜"})--></Memory>
+<Memory><!-- insertRow(3, {0: "艾莉娅", 1: "23岁", 2: "神秘商人", 3: "迷雾森林", 4: "神秘冷静，知识渊博", 5: "有一个失散的妹妹，擅长占卜"})--></Memory>
 
 ✅ 新增人物关系:
 <Memory><!-- insertRow(4, {0: "{{user}}", 1: "艾莉娅", 2: "委托人与受托者", 3: "中立友好，略带神秘感"})--></Memory>
 
 ✅ 新增约定:
-<Memory><!-- insertRow(7, {0: "2024年3月18日前", 1: "找到失落宝石交给长老", 2: "长老"})--></Memory>
+<Memory><!-- insertRow(7, {0: "YYYY年MM月DD日", 1: "找到失落宝石交给长老", 2: "长老"})--></Memory>
 
 ✅ 物品流转（如物品已存在，则更新持有者）：
 <Memory><!-- updateRow(6, 0, {2: "艾莉娅的背包", 3: "艾莉娅", 4: "已获得"})--></Memory>
@@ -249,14 +249,14 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
 
 1. 主线剧情：
    - 聚合【主线剧情 (表0)】、【角色状态 (表2)】、【约定 (表7)】的核心信息。
-   - 格式：\`日期·时间-时间 [地点] 核心事件描述（融合状态变更与物品获取）。\`
+   - 日期格式：\`日期·时间-时间 [地点] 核心事件描述（融合状态变更与物品获取）。\`
 
 2. 支线剧情：
    - 聚合【支线追踪 (表1)】、【世界设定 (表5)】的背景信息。
    - 格式：\`日期·时间-时间 [地点] NPC/角色名 独立事件或背景补充。\`
 
 【记忆总结·时空聚合规则】
-1. 📅 日期归档：以日期为一级标题（如：\`【主线剧情 2024年03月15日】\`）。
+1. 📅 日期归档：以以故事剧情时间日期为一级标题（如：\`【主线剧情 YYYY年MM月DD日】\`）。
 2. 📍 时空合并：
    - 表格中可能存在多行同一时间地点的碎片记录（如10:00 A说话，10:05 A吃饭）。
    - 必须将它们合并为一段通顺的描述，严禁罗列流水账！
@@ -265,11 +265,11 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
 
 【✅ 正确输出范例】：
 
-【主线剧情 2024年03月15日】
+【主线剧情 YYYY年MM月DD日】
 08:00-10:30 [教室] 角色A与B发生争执，导致B[状态:受伤]；A随后被带离现场。
 19:00-22:00 [公寓] 众人集结谈判，B签署了《协议书》；C获得了[关键道具:印章]。
 
-【支线剧情 2024年03月15日】
+【支线剧情 YYYY年MM月DD日】
 08:15-09:00 [档案室] NPC甲秘密销毁了档案，触发了[世界设定:紧急销毁程序]。
 
 ⚡ 立即执行：
@@ -343,8 +343,8 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
 【总结内容分类】
 1. 主线剧情：
    - 仅记录 主角与 {{user}} 的直接交互核心。
-   - 格式：\`x年x月x日·HH:mm-HH:mm [地点] 角色名 事件描述（必须包含事件导致的状态/关系变更结果）。
-   - 示例：2838年02月15日·09:00-10:30 [张氏大厦] 张三与李四达成和解，张三承诺"永远不再踏入赌坊"作为交换条件，双方关系由"敌对"转为"暂时盟友"。
+   - 格式：\`YYYY年MM月DD日·HH:mm-HH:mm [地点] 角色名 事件描述（必须包含事件导致的状态/关系变更结果）。
+   - 示例：YYYY年MM月DD日·09:00-10:30 [张氏大厦] 张三与李四达成和解，张三承诺"永远不再踏入赌坊"作为交换条件，双方关系由"敌对"转为"暂时盟友"。
 
 2. 支线剧情：
    - 记录 主角/{{user}}和NPC 互动剧情或NPC的独立行动。
@@ -355,7 +355,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
 请严格执行"按日归档、时空聚合"的逻辑，将【主线】与【支线】分开记录：
 
 1. 📅 日期归档原则：
-   - 必须以日期为一级标题（如：\`【主线剧情 2024年03月15日】\`）。
+   - 必须以剧情内的日期为一级标题（如：\`【主线剧情 YYYY年MM月DD日】\`）。
    - 同一日期的所有事件，合并在该标题下方。
 
 2. 📍 时空合并逻辑（主线与支线通用）：
@@ -376,15 +376,15 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
 <!-- 📊 第三部分：输出范例 -->
 
 【✅ 正确输出范例】：
-   【主线剧情 2024年03月15日】
+   【主线剧情 YYYY年MM月DD日】
    08:00-10:30 [地点A·教室] 角色A向角色B赠送了关键道具；角色C中途介入并带走角色B；
    11:00-14:20 [地点B·别墅] 角色C限制了角色B的行动；角色D闯入打断；角色A最终抵达并将角色B带离；
    19:00-22:00 [地点C·公寓] 四名角色集结，向角色B展示了不利证据，迫使其签署了《协议书》；随后众人在书房进行了多人互动。
 
-   【主线剧情 2024年03月16日】
+   【主线剧情 YYYY年MM月DD日】
    09:00-12:00 [地点D·医院] 角色B因身体不适就医，医生E伪造了诊断证明；角色A支付了医药费并将其带回。
 
-   【支线剧情 2024年03月15日】
+   【支线剧情 YYYY年MM月DD日】
    08:15-09:00 [地点E·档案室] 甲秘密销毁了关于角色B的旧档案，并通知了乙；
    13:00-14:00 [地点F·街道] 丙在跟踪角色A时被发现，随即销毁证据逃离；
    23:00-23:30 [地点G·酒吧] 丁从他人处得知了白天的冲突事件，决定暂时隐匿行踪。`;
@@ -444,7 +444,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
 🔴【首要检查】表格是否为空？
 - ❓表格是否完全没有数据（Next Row Index: 0）？
 - ✅是 -> 这是【全新开始】，必须使用 insertRow(0, {...})，并且**必须填写完整的日期和开始时间**！
-  - 示例：insertRow(0, {0: "2024年3月15日", 1: "上午(08:30)", 2: "", 3: "事件内容", 4: "进行中"})
+  - 示例：insertRow(0, {0: "YYYY年MM月DD日", 1: "上午(HH:mm)", 2: "", 3: "事件内容", 4: "进行中"})
   - ❌ 严禁遗漏日期列（第0列）！
   - ❌ 严禁遗漏开始时间列（第1列）！
 - ❌否 -> 表格有数据，继续检查日期：
@@ -534,7 +534,7 @@ insertRow(0, {0: "...", 1: "10:00-11:15", 3: "A与B在车内交谈，A靠在B肩
 6. ❌ 严禁只填写事件内容而遗漏时间信息！
 
 ✅ 第一天开始（表格为空,新增第0行）【必须填写日期和时间】:
-<Memory><!-- insertRow(0, {0: "2024年3月15日", 1: "上午(08:30)", 2: "", 3: "在村庄接受长老委托,前往迷雾森林寻找失落宝石", 4: "进行中"})--></Memory>
+<Memory><!-- insertRow(0, {0: "YYYY年MM月DD日", 1: "上午(HH:mm)", 2: "", 3: "在村庄接受长老委托,前往迷雾森林寻找失落宝石", 4: "进行中"})--></Memory>
 
 ✅ 同一天推进（只写新事件,系统会自动追加到列3）:
 <Memory><!-- updateRow(0, 0, {3: "在迷雾森林遭遇神秘商人艾莉娅,获得线索:宝石在古神殿深处"})--></Memory>
@@ -543,23 +543,23 @@ insertRow(0, {0: "...", 1: "10:00-11:15", 3: "A与B在车内交谈，A靠在B肩
 <Memory><!-- updateRow(0, 0, {3: "在森林露营休息"})--></Memory>
 
 ✅ 同一天完结（只需填写完结时间和状态）:
-<Memory><!-- updateRow(0, 0, {2: "晚上(22:00)", 4: "暂停"})--></Memory>
+<Memory><!-- updateRow(0, 0, {2: "晚上(HH:mm)", 4: "暂停"})--></Memory>
 
 ✅ 跨天处理（完结前一天 + 新增第二天）:
-<Memory><!-- updateRow(0, 0, {2: "深夜(23:50)", 4: "已完成"})
-insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿继续探索,寻找宝石线索", 4: "进行中"})--></Memory>
+<Memory><!-- updateRow(0, 0, {2: "深夜(HH:mm)", 4: "已完成"})
+insertRow(0, {0: "YYYY年MM月DD日", 1: "凌晨(HH:mm)", 2: "", 3: "在古神殿继续探索,寻找宝石线索", 4: "进行中"})--></Memory>
 
 ✅ 新增支线:
-<Memory><!-- insertRow(1, {0: "进行中", 1: "艾莉娅的委托", 2: "2024年3月15日·下午(14:00)", 3: "", 4: "艾莉娅请求帮忙寻找失散的妹妹", 5: "艾莉娅"})--></Memory>
+<Memory><!-- insertRow(1, {0: "进行中", 1: "艾莉娅的委托", 2: "YYYY年MM月DD日·下午(HH:mm)", 3: "", 4: "艾莉娅请求帮忙寻找失散的妹妹", 5: "艾莉娅"})--></Memory>
 
 ✅ 新增人物档案:
-<Memory><!-- insertRow(3, {0: "艾莉娅", 1: "23", 2: "神秘商人", 3: "迷雾森林", 4: "神秘冷静,知识渊博", 5: "有一个失散的妹妹,擅长占卜"})--></Memory>
+<Memory><!-- insertRow(3, {0: "艾莉娅", 1: "23岁", 2: "神秘商人", 3: "迷雾森林", 4: "神秘冷静,知识渊博", 5: "有一个失散的妹妹,擅长占卜"})--></Memory>
 
 ✅ 新增人物关系:
 <Memory><!-- insertRow(4, {0: "{{user}}", 1: "艾莉娅", 2: "委托人与受托者", 3: "中立友好,略带神秘感"})--></Memory>
 
 ✅ 新增约定:
-<Memory><!-- insertRow(7, {0: "2024年3月18日前", 1: "找到失落宝石交给长老", 2: "长老"})--></Memory>
+<Memory><!-- insertRow(7, {0: "YYYY年MM月DD日", 1: "找到失落宝石交给长老", 2: "长老"})--></Memory>
 
 ✅ 物品流转（如物品已存在,则更新持有者）:
 <Memory><!-- updateRow(6, 0, {2: "艾莉娅的背包", 3: "艾莉娅", 4: "已获得"})--></Memory>
@@ -573,6 +573,19 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
 严禁使用Markdown 代码块、JSON 格式、XML标签等不符合语法示例和正确格式的内容。
 
 ⚡ 立即开始执行:请从头到尾记录并分析上述所有剧情,按照以上所有规则更新表格,将结果输出在<Memory>标签中.`;
+
+    // ----- 5. 总结优化提示词 -----
+    const DEFAULT_SUM_OPTIMIZE = `请对上述内容进行整合且精简优化，目标是生成类似小说梗概的连贯叙事。严格遵守以下核心协议：
+
+1. 【格式纯净】：严禁使用 Markdown 符号（如 #、*、-、>），严禁加粗。仅使用纯文本和标点符号。
+2. 【时空聚合】：强制合并主线剧情里同一个地点（如[山庄·主卧]）且连贯的时间线内的所有连续剧情，必须合并成**唯一的一个段落**。严禁像流水账一样罗列时间点！格式要求：只写总的"开始时间-结束时间"，中间的剧情全部用合适的标点符号或分号连接成一段完整的剧情。
+- 示例：
+     (原) 10:00-10:05 [山庄·客厅] A做了X。
+     (原) 10:05-10:30 [山庄·客厅] A又做了Y。
+     (改) 10:00-10:30 [山庄·客厅] A先做了X，随后做了Y。
+3. 【拒绝抽象】：严禁使用"宣示主权"、"暧昧气氛"、"心理博弈"等定义性词汇。必须保留具体的"行为动作"和"对话核心"来体现事情的前因后果及状态。
+4. 【因果完整】：严禁为了精简而删除前因后果。保留导致人物关系变化、状态变更（如死亡、受伤、恢复、移动、获得/丢失物品）的关键逻辑。
+5. 【客观口吻】：保持绝对客观的记录风格。`;
 
     // ========================================================================
     // 预设管理系统
@@ -722,6 +735,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                 summaryPromptTable: DEFAULT_SUM_TABLE,
                 summaryPromptChat: DEFAULT_SUM_CHAT,
                 backfillPrompt: DEFAULT_BACKFILL_PROMPT,
+                summaryPromptOptimize: DEFAULT_SUM_OPTIMIZE,
                 promptVersion: PROMPT_VERSION
             };
 
@@ -1315,7 +1329,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                 <div style="margin-bottom: 8px; font-weight: 600; display:flex; justify-content:space-between; align-items:center;">
                     <span>📝 总结/批量提示词</span>
 
-                    <div style="display: flex; background: rgba(127, 127, 127, 0.15); padding: 4px; border-radius: 8px; gap: 4px;">
+                    <div style="display: flex; background: rgba(127, 127, 127, 0.15); padding: 4px; border-radius: 8px; gap: 4px; flex-wrap: wrap;">
                         <label style="flex: 1; text-align: center; justify-content: center; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; transition: all 0.2s; color: ${window.Gaigai.ui.tc}; opacity: 0.7; display: flex; align-items: center; border: 1px solid transparent;" id="gg_tab_label_table">
                             <input type="radio" name="pmt-sum-type" value="table" checked>
                             📊 表格总结
@@ -1327,6 +1341,10 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                         <label style="flex: 1; text-align: center; justify-content: center; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; transition: all 0.2s; color: ${window.Gaigai.ui.tc}; opacity: 0.7; display: flex; align-items: center; border: 1px solid transparent;" id="gg_tab_label_backfill">
                             <input type="radio" name="pmt-sum-type" value="backfill">
                             ⚡ 批量填表
+                        </label>
+                        <label style="flex: 1; text-align: center; justify-content: center; padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; transition: all 0.2s; color: ${window.Gaigai.ui.tc}; opacity: 0.7; display: flex; align-items: center; border: 1px solid transparent;" id="gg_tab_label_optimize">
+                            <input type="radio" name="pmt-sum-type" value="optimize">
+                            ✨ 总结优化
                         </label>
                     </div>
                 </div>
@@ -1349,6 +1367,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
             let tempTablePmt = currentData.summaryPromptTable !== undefined ? currentData.summaryPromptTable : DEFAULT_SUM_TABLE;
             let tempChatPmt = currentData.summaryPromptChat !== undefined ? currentData.summaryPromptChat : DEFAULT_SUM_CHAT;
             let tempBackfillPmt = currentData.backfillPrompt !== undefined ? currentData.backfillPrompt : DEFAULT_BACKFILL_PROMPT;
+            let tempOptimizePmt = currentData.summaryPromptOptimize !== undefined ? currentData.summaryPromptOptimize : DEFAULT_SUM_OPTIMIZE;
 
             // 预设切换
             $('#gg_profile_selector').on('change', function() {
@@ -1374,6 +1393,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                     summaryPromptTable: '',
                     summaryPromptChat: '',
                     backfillPrompt: '',
+                    summaryPromptOptimize: '',
                     promptVersion: PROMPT_VERSION
                 };
                 profilesData.profiles[newId] = {
@@ -1481,6 +1501,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                 if (prevType === 'table') tempTablePmt = currentVal;
                 else if (prevType === 'chat') tempChatPmt = currentVal;
                 else if (prevType === 'backfill') tempBackfillPmt = currentVal;
+                else if (prevType === 'optimize') tempOptimizePmt = currentVal;
 
                 // 加载新内容
                 if (type === 'table') {
@@ -1492,6 +1513,9 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                 } else if (type === 'backfill') {
                     $('#gg_pmt_summary').val(tempBackfillPmt);
                     $('#gg_pmt_desc').text('当前编辑：批量/追溯填表的历史回溯指令');
+                } else if (type === 'optimize') {
+                    $('#gg_pmt_summary').val(tempOptimizePmt);
+                    $('#gg_pmt_desc').text('当前编辑：总结优化/润色的指令');
                 }
 
                 $('input[name="pmt-sum-type"]').data('was-checked', false);
@@ -1504,6 +1528,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                 if (type === 'table') tempTablePmt = $(this).val();
                 else if (type === 'chat') tempChatPmt = $(this).val();
                 else if (type === 'backfill') tempBackfillPmt = $(this).val();
+                else if (type === 'optimize') tempOptimizePmt = $(this).val();
             });
 
             // 保存按钮
@@ -1516,6 +1541,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                 currentData.summaryPromptTable = tempTablePmt;
                 currentData.summaryPromptChat = tempChatPmt;
                 currentData.backfillPrompt = tempBackfillPmt;
+                currentData.summaryPromptOptimize = tempOptimizePmt;
                 currentData.promptVersion = PROMPT_VERSION;
 
                 delete currentData.summaryPrompt; // 移除旧字段
@@ -1588,6 +1614,14 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                             </div>
                         </label>
 
+                        <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px; cursor:pointer; background:var(--g-c); border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:6px;">
+                            <input type="checkbox" id="gg_rst_optimize" checked style="transform:scale(1.2);">
+                            <div>
+                                <div style="font-weight:bold;">✨ 总结优化提示词</div>
+                                <div style="font-size:10px; opacity:0.8;">(Summary Optimization)</div>
+                            </div>
+                        </label>
+
                         <div style="margin-top:15px; display:flex; gap:10px;">
                             <button id="gg_confirm_reset_btn" style="flex:1; padding:10px; background:#dc3545; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">确认恢复</button>
                             <button id="gg_cancel_reset_btn" style="flex:1; padding:10px; background:#6c757d; color:#fff; border:none; border-radius:6px; cursor:pointer;">取消</button>
@@ -1618,6 +1652,10 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                         if ($('#gg_rst_backfill').is(':checked')) {
                             currentData.backfillPrompt = DEFAULT_BACKFILL_PROMPT;
                             tempBackfillPmt = DEFAULT_BACKFILL_PROMPT;
+                        }
+                        if ($('#gg_rst_optimize').is(':checked')) {
+                            currentData.summaryPromptOptimize = DEFAULT_SUM_OPTIMIZE;
+                            tempOptimizePmt = DEFAULT_SUM_OPTIMIZE;
                         }
 
                         currentData.promptVersion = PROMPT_VERSION;
@@ -1766,6 +1804,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
                 summaryPromptTable: DEFAULT_SUM_TABLE,
                 summaryPromptChat: DEFAULT_SUM_CHAT,
                 backfillPrompt: DEFAULT_BACKFILL_PROMPT,
+                summaryPromptOptimize: DEFAULT_SUM_OPTIMIZE,
                 promptVersion: PROMPT_VERSION
             };
 
@@ -2526,6 +2565,7 @@ insertRow(0, {0: "2024年3月16日", 1: "凌晨(00:10)", 2: "", 3: "在古神殿
         DEFAULT_SUM_CHAT: DEFAULT_SUM_CHAT,
         CHAT_HISTORY_END_MARKER: CHAT_HISTORY_END_MARKER,
         DEFAULT_BACKFILL_PROMPT: DEFAULT_BACKFILL_PROMPT,
+        DEFAULT_SUM_OPTIMIZE: DEFAULT_SUM_OPTIMIZE,
         NSFW_UNLOCK: NSFW_UNLOCK,
 
         // 版本信息

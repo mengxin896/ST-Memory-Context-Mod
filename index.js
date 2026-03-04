@@ -1,5 +1,5 @@
 // ========================================================================
-// 记忆表格 v2.1.7
+// 记忆表格 v2.1.8
 // SillyTavern 记忆管理系统 - 提供表格化记忆、自动总结、批量填表等功能
 // ========================================================================
 (function () {
@@ -15,7 +15,7 @@
     }
     window.GaigaiLoaded = true;
 
-    console.log('🚀 记忆表格 v2.1.7 启动');
+    console.log('🚀 记忆表格 v2.1.8 启动');
 
     // ===== 防止配置被后台同步覆盖的标志 =====
     window.isEditingConfig = false;
@@ -27,7 +27,7 @@
     window.Gaigai.isSwiping = false;
 
     // ==================== 全局常量定义 ====================
-    const V = 'v2.1.7';
+    const V = 'v2.1.8';
     const SK = 'gg_data';              // 数据存储键
     const UK = 'gg_ui';                // UI配置存储键
     const AK = 'gg_api';               // API配置存储键
@@ -82,7 +82,9 @@
         vectorMaxCount: 10,            // 最大召回条数
         vectorSeparator: '===',        // 🆕 知识库文本切分符
         customTables: null,            // 用户自定义表格结构（格式同 DEFAULT_TABLES）
-        reverseView: false             // ❌ 默认关闭倒序显示（最新行在上）
+        reverseView: false,            // ❌ 默认关闭倒序显示（最新行在上）
+        reverseToc: false,             // 🆕 总结目录倒序显示开关
+        sinkHiddenRows: false          // 🆕 沉淀已隐藏行（绿色行沉底）
     };
 
     // ==================== API配置对象 ====================
@@ -1671,6 +1673,8 @@
                 C.vectorMaxCount = globalConfig.vectorMaxCount !== undefined ? globalConfig.vectorMaxCount : 3;
                 // ✅ 视图配置
                 C.reverseView = globalConfig.reverseView !== undefined ? globalConfig.reverseView : false;
+                C.reverseToc = globalConfig.reverseToc !== undefined ? globalConfig.reverseToc : false;
+                C.sinkHiddenRows = globalConfig.sinkHiddenRows !== undefined ? globalConfig.sinkHiddenRows : false;
 
                 if (globalApiConfig.summarySource !== undefined) API_CONFIG.summarySource = globalApiConfig.summarySource;
                 else API_CONFIG.summarySource = 'table';
@@ -2379,7 +2383,7 @@
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: C.reverseView ? themeColor : (isDark ? '#555' : '#ccc'),
+                backgroundColor: C.reverseView ? '#4caf50' : (isDark ? '#555' : '#ccc'),
                 borderRadius: '24px',
                 transition: 'background-color 0.3s',
                 cursor: 'pointer'
@@ -2411,8 +2415,78 @@
             C.reverseView = isReversed;
 
             // 更新开关样式
-            $reverseSlider.css('backgroundColor', isReversed ? themeColor : (isDark ? '#555' : '#ccc'));
+            $reverseSlider.css('backgroundColor', isReversed ? '#4caf50' : (isDark ? '#555' : '#ccc'));
             $reverseKnob.css('left', isReversed ? '23px' : '3px');
+
+            // 保存配置到 localStorage
+            try { localStorage.setItem('gg_config', JSON.stringify(C)); } catch(err){}
+
+            // 保存并刷新视图
+            m.save();
+            shw();
+        });
+
+        // 👻 沉底已隐藏行开关
+        const $sinkContainer = $('<div>', {
+            css: {
+                background: isDark ? 'rgba(255,255,255,0.05)' : '#f8f9fa',
+                padding: '12px',
+                borderRadius: '8px',
+                border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #eee',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+            }
+        });
+
+        const $sinkLabel = $('<div>', {
+            html: '<span style="font-size:12px; font-weight:600; color:var(--g-tc);">👻 沉淀已隐藏行</span><br><span style="font-size:10px; color:#999;">将变绿的记录自动排在表格最下方</span>',
+            css: { flex: 1 }
+        });
+
+        const $sinkToggle = $('<label>', {
+            css: { position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }
+        });
+
+        const $sinkCheckbox = $('<input>', {
+            type: 'checkbox',
+            checked: C.sinkHiddenRows,
+            css: { display: 'none' }
+        });
+
+        const $sinkSlider = $('<span>', {
+            css: {
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: C.sinkHiddenRows ? '#4caf50' : (isDark ? '#555' : '#ccc'), // 使用绿色代表隐藏色
+                borderRadius: '24px', transition: 'background-color 0.3s', cursor: 'pointer'
+            }
+        });
+
+        const $sinkKnob = $('<span>', {
+            css: {
+                position: 'absolute', height: '18px', width: '18px',
+                left: C.sinkHiddenRows ? '23px' : '3px', bottom: '3px',
+                backgroundColor: 'white', borderRadius: '50%', transition: 'left 0.3s',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }
+        });
+
+        $sinkSlider.append($sinkKnob);
+        $sinkToggle.append($sinkCheckbox, $sinkSlider);
+        $sinkContainer.append($sinkLabel, $sinkToggle);
+        $box.append($sinkContainer); // 添加到倒序开关的下方
+
+        // 沉底开关事件
+        $sinkCheckbox.on('change', function() {
+            const isSinked = $(this).is(':checked');
+            C.sinkHiddenRows = isSinked;
+
+            // 更新开关样式 (使用绿色代表这和显隐相关)
+            $sinkSlider.css('backgroundColor', isSinked ? '#4caf50' : (isDark ? '#555' : '#ccc'));
+            $sinkKnob.css('left', isSinked ? '23px' : '3px');
+
+            // 保存配置到 localStorage
+            try { localStorage.setItem('gg_config', JSON.stringify(C)); } catch(err){}
 
             // 保存并刷新视图
             m.save();
@@ -4908,7 +4982,7 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
         if (currentBookPage < 0) currentBookPage = 0;
 
         // ✨✨✨ 生成目录 HTML ✨✨✨
-        let tocItems = '';
+        let tocItemsArr = [];
         sheet.r.forEach((r, idx) => {
             const tTitle = r[0] || '无标题';
             const tContent = (r[1] || '').substring(0, 30);
@@ -4916,20 +4990,31 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
             const tNote = r[2] ? `<div class="g-toc-meta">📌 ${esc(r[2])}</div>` : '';
             const activeClass = idx === currentBookPage ? ' active' : '';
 
-            tocItems += `
+            tocItemsArr.push(`
                 <div class="g-toc-item${activeClass}" data-page="${idx}" data-ti="${tableIndex}">
                     <div class="g-toc-title">${idx + 1}. ${esc(tTitle)}</div>
                     ${tNote}
                     <div class="g-toc-preview">${esc(tContentDisplay)}</div>
-                </div>`;
+                </div>`);
         });
+
+        // 根据配置决定是否倒序
+        if (C.reverseToc) {
+            tocItemsArr.reverse();
+        }
+        let tocItems = tocItemsArr.join('');
 
         const tocHtml = `
             <div class="g-toc-overlay" id="gai-toc-overlay-${tableIndex}"></div>
             <div class="g-book-toc-panel" id="gai-book-toc-${tableIndex}">
                 <div class="g-toc-header">
                     <span>📚 目录导航</span>
-                    <button id="gai-toc-close-${tableIndex}" style="background:none;border:none;cursor:pointer;font-size:20px;color:inherit;padding:0;">×</button>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button class="g-toc-sort-btn" data-ti="${tableIndex}" style="background:rgba(0,0,0,0.1); border:none; border-radius:4px; cursor:pointer; font-size:11px; color:inherit; padding:4px 8px;" title="切换排序">
+                            ${C.reverseToc ? '🔽 倒序' : '🔼 正序'}
+                        </button>
+                        <button id="gai-toc-close-${tableIndex}" style="background:none;border:none;cursor:pointer;font-size:20px;color:inherit;padding:0;">×</button>
+                    </div>
                 </div>
                 <div class="g-toc-list">
                     ${tocItems}
@@ -5065,19 +5150,33 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
             // ✅ Fix colspan: RowNum(1) + DataColumns(s.c.length)
             h += `<tr class="g-emp"><td colspan="${s.c.length + 1}">暂无数据</td></tr>`;
         } else {
-            // ✅ 倒序显示逻辑：根据 C.reverseView 决定渲染顺序
+            // ✅ 智能视图排序逻辑：支持沉底与倒序混合
             const renderRows = () => {
-                if (C.reverseView) {
-                    // 倒序渲染：从最后一行到第一行
-                    for (let ri = s.r.length - 1; ri >= 0; ri--) {
-                        renderRow(ri);
+                // 1. 生成原始索引数组
+                let indices = Array.from({ length: s.r.length }, (_, i) => i);
+
+                if (C.sinkHiddenRows) {
+                    // 2. 分离：未隐藏(白色) 和 已隐藏(绿色)
+                    let visible = indices.filter(ri => !isSummarized(ti, ri));
+                    let hidden = indices.filter(ri => isSummarized(ti, ri));
+
+                    // 3. 如果开启了倒序，各自块内倒序
+                    if (C.reverseView) {
+                        visible.reverse();
+                        hidden.reverse();
                     }
+
+                    // 4. 拼接：显示的在上，隐藏的在下
+                    indices = [...visible, ...hidden];
                 } else {
-                    // 正序渲染：从第一行到最后一行
-                    s.r.forEach((rw, ri) => {
-                        renderRow(ri);
-                    });
+                    // 如果没开启沉底，只处理倒序
+                    if (C.reverseView) {
+                        indices.reverse();
+                    }
                 }
+
+                // 5. 按计算好的顺序进行渲染
+                indices.forEach(ri => renderRow(ri));
             };
 
             // 渲染单行的函数（保持 data-r 为真实索引）
@@ -5316,6 +5415,29 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
             // 自动关闭目录（移动端体验优化）
             $(`#gai-book-toc-${ti}`).removeClass('active');
             $(`#gai-toc-overlay-${ti}`).removeClass('active');
+        });
+
+        // 5. 切换目录排序
+        $('#gai-main-pop').off('click', '.g-toc-sort-btn').on('click', '.g-toc-sort-btn', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const ti = parseInt($(this).data('ti'));
+
+            // 切换状态并保存配置
+            C.reverseToc = !C.reverseToc;
+            try { localStorage.setItem('gg_config', JSON.stringify(C)); } catch(err){}
+            if (typeof window.Gaigai.saveAllSettingsToCloud === 'function') {
+                window.Gaigai.saveAllSettingsToCloud().catch(()=>{});
+            }
+
+            // 刷新视图
+            refreshBookView(ti);
+
+            // 刷新后 HTML 会被替换，目录面板会自动关闭，所以我们需要在短暂延迟后重新自动打开它
+            setTimeout(() => {
+                $(`#gai-book-toc-${ti}`).addClass('active');
+                $(`#gai-toc-overlay-${ti}`).addClass('active');
+            }, 50);
         });
 
         // 辅助函数：刷新笔记本视图
@@ -12949,9 +13071,9 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                     </h4>
                     <ul style="margin:0; padding-left:20px; font-size:12px; color:var(--g-tc); opacity:0.9;">
                         <li><strong>⚠️重要通知⚠️：</strong>从1.7.5版本前更新的用户，必须进入【提示词区】上方的【表格结构编辑区】，手动将表格【恢复默认】。</li>
-                        <li><strong>新增：</strong>AI配置中新增"流式/非流式传输"切换选项，如遇到输出被截断可尝试取消勾选。填表、总结、总结优化功能均已全面适配。</li>
-                        <li><strong>修复：</strong>修复批量填表模式下，用户在确认弹窗点击"取消"后表格意外清空的Bug（修复全局锁过早释放导致的并发竞态问题）。</li>
-                        <li><strong>修复：</strong>修复Swipe切换回复时错误触发快照回档的Bug，批量填表模式下现在会跳过回档以保护表格数据。</li>
+                        <li><strong>新增：</strong>提示词管理器新增"✨ 总结优化"提示词配置，可在UI中自定义总结优化/润色指令。</li>
+                        <li><strong>新增：</strong>记忆总结笔记本目录新增"🔼 正序/🔽 倒序"切换按钮，可自由调整目录显示顺序。</li>
+                        <li><strong>新增：</strong>视图设置新增"👻 沉淀已隐藏行"开关，可将变绿的记录自动排在表格最下方。</li>
                     </ul>
                 </div>
 
