@@ -72,6 +72,7 @@
         cloudSync: true,
         syncWorldInfo: false,          // ❌ 默认关闭世界书同步
         worldInfoVectorized: false,    // ❌ 默认关闭世界书自带向量化（已移除UI选项）
+        autoVectorizeSummary: false,   // ❌ 默认关闭总结后自动向量化（每聊隔离）
         // ==================== 独立向量检索配置 ====================
         vectorEnabled: false,          // ❌ 默认关闭独立向量检索
         vectorProvider: 'openai',      // 向量服务提供商
@@ -1349,6 +1350,7 @@
                     vectorModel: C.vectorModel,
                     vectorThreshold: C.vectorThreshold,
                     vectorMaxCount: C.vectorMaxCount,
+                    autoVectorizeSummary: C.autoVectorizeSummary,
                     // ✅ 视图配置
                     reverseView: C.reverseView
                 }
@@ -1671,6 +1673,7 @@
                 C.vectorModel = globalConfig.vectorModel !== undefined ? globalConfig.vectorModel : 'BAAI/bge-m3';
                 C.vectorThreshold = globalConfig.vectorThreshold !== undefined ? globalConfig.vectorThreshold : 0.6;
                 C.vectorMaxCount = globalConfig.vectorMaxCount !== undefined ? globalConfig.vectorMaxCount : 3;
+                C.autoVectorizeSummary = globalConfig.autoVectorizeSummary !== undefined ? globalConfig.autoVectorizeSummary : false;
                 // ✅ 视图配置
                 C.reverseView = globalConfig.reverseView !== undefined ? globalConfig.reverseView : false;
                 C.reverseToc = globalConfig.reverseToc !== undefined ? globalConfig.reverseToc : false;
