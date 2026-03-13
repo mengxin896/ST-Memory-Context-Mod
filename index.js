@@ -1,5 +1,5 @@
 // ========================================================================
-// 记忆表格 v2.1.9
+// 记忆表格 v2.2.0
 // SillyTavern 记忆管理系统 - 提供表格化记忆、自动总结、批量填表等功能
 // ========================================================================
 (function () {
@@ -15,7 +15,7 @@
     }
     window.GaigaiLoaded = true;
 
-    console.log('🚀 记忆表格 v2.1.9 启动');
+    console.log('🚀 记忆表格 v2.2.0 启动');
 
     // ===== 防止配置被后台同步覆盖的标志 =====
     window.isEditingConfig = false;
@@ -27,7 +27,7 @@
     window.Gaigai.isSwiping = false;
 
     // ==================== 全局常量定义 ====================
-    const V = 'v2.1.9';
+    const V = 'v2.2.0';
     const SK = 'gg_data';              // 数据存储键
     const UK = 'gg_ui';                // UI配置存储键
     const AK = 'gg_api';               // API配置存储键
@@ -6826,6 +6826,14 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                     finish('所有页面已设为隐藏');
                 });
 
+                const $btnShowAll = $('<button>', {
+                    html: '📖 将所有页面设为【显示/正常】',
+                    css: btnCss
+                }).on('click', () => {
+                    if (summarizedRows[ti]) summarizedRows[ti] = [];
+                    finish('所有页面已设为显示');
+                });
+
                 // 3. 指定范围输入区
                 const $rangeArea = $('<div>', { css: { display: 'flex', gap: '5px', marginTop: '5px', alignItems: 'center' } });
                 const $rangeInput = $('<input>', {
@@ -6843,25 +6851,31 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                         color: UI.tc
                     }
                 });
-                const $rangeBtn = $('<button>', {
-                    text: '执行',
+                const $rangeHideBtn = $('<button>', {
+                    text: '隐藏',
                     css: {
-                        flex: '0 0 auto', // ✨ 按钮不伸缩
-                        padding: '6px 12px', // ✨ 减小内边距
-                        background: btnBg,
-                        color: btnColor,
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap' // ✨ 防止文字换行
+                        flex: '0 0 auto', padding: '6px 10px', background: btnBg, color: btnColor,
+                        border: 'none', borderRadius: '6px', cursor: 'pointer', whiteSpace: 'nowrap'
                     }
                 }).on('click', () => {
                     const val = $rangeInput.val().trim();
                     if (!val) return;
-                    processRange(val);
+                    processRange(val, 'hide');
                 });
 
-                $rangeArea.append($rangeInput, $rangeBtn);
+                const $rangeShowBtn = $('<button>', {
+                    text: '显示',
+                    css: {
+                        flex: '0 0 auto', padding: '6px 10px', background: btnBg, color: btnColor,
+                        border: 'none', borderRadius: '6px', cursor: 'pointer', whiteSpace: 'nowrap'
+                    }
+                }).on('click', () => {
+                    const val = $rangeInput.val().trim();
+                    if (!val) return;
+                    processRange(val, 'show');
+                });
+
+                $rangeArea.empty().append($rangeInput, $rangeHideBtn, $rangeShowBtn);
 
                 const $cancelBtn = $('<button>', {
                     text: '取消',
@@ -6885,7 +6899,7 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                     else summarizedRows[ti].push(ri);
                 }
 
-                function processRange(str) {
+                function processRange(str, action = 'hide') {
                     if (!summarizedRows[ti]) summarizedRows[ti] = [];
                     const parts = str.split(/[,，]/);
                     let count = 0;
@@ -6895,8 +6909,12 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                             if (!isNaN(s) && !isNaN(e)) {
                                 for (let i = s; i <= e; i++) {
                                     if (i > 0 && i <= totalPages) {
-                                        if (!summarizedRows[ti].includes(i - 1)) {
-                                            summarizedRows[ti].push(i - 1);
+                                        const targetIdx = i - 1;
+                                        if (action === 'hide' && !summarizedRows[ti].includes(targetIdx)) {
+                                            summarizedRows[ti].push(targetIdx);
+                                            count++;
+                                        } else if (action === 'show' && summarizedRows[ti].includes(targetIdx)) {
+                                            summarizedRows[ti] = summarizedRows[ti].filter(idx => idx !== targetIdx);
                                             count++;
                                         }
                                     }
@@ -6905,14 +6923,19 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                         } else {
                             const idx = parseInt(p);
                             if (!isNaN(idx) && idx > 0 && idx <= totalPages) {
-                                if (!summarizedRows[ti].includes(idx - 1)) {
-                                    summarizedRows[ti].push(idx - 1);
+                                const targetIdx = idx - 1;
+                                if (action === 'hide' && !summarizedRows[ti].includes(targetIdx)) {
+                                    summarizedRows[ti].push(targetIdx);
+                                    count++;
+                                } else if (action === 'show' && summarizedRows[ti].includes(targetIdx)) {
+                                    summarizedRows[ti] = summarizedRows[ti].filter(id => id !== targetIdx);
                                     count++;
                                 }
                             }
                         }
                     });
-                    finish(`已将指定范围内的 ${count} 篇设为隐藏`);
+                    const actionText = action === 'hide' ? '隐藏' : '显示';
+                    finish(`已将指定范围内的 ${count} 篇设为${actionText}`);
                 }
 
                 function finish(msg) {
@@ -6928,7 +6951,7 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                     if (typeof toastr !== 'undefined') toastr.success(msg);
                 }
 
-                $box.append($btnCurrent, $btnAll, $rangeArea, $cancelBtn);
+                $box.append($btnCurrent, $btnAll, $btnShowAll, $rangeArea, $cancelBtn);
                 $overlay.append($box);
                 $('body').append($overlay);
                 return;
@@ -13074,8 +13097,7 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                     </h4>
                     <ul style="margin:0; padding-left:20px; font-size:12px; color:var(--g-tc); opacity:0.9;">
                         <li><strong>⚠️重要通知⚠️：</strong>从1.7.5版本前更新的用户，必须进入【提示词区】上方的【表格结构编辑区】，手动将表格【恢复默认】。</li>
-                        <li><strong>UI重构：</strong>提示词管理器新增"📋 填表/记录"组，将"实时填表"和"批量/追溯"合并为一个切换区块。</li>
-                        <li><strong>UI优化：</strong>"总结/优化"组精简为三个选项：表格总结、聊天总结、总结优化。</li>
+                        <li><strong>加强显/隐：</strong>新增显/隐功能对总结表可进行一键显示或分页显示</li>
                     </ul>
                 </div>
 

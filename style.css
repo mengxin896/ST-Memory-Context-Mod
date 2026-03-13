@@ -1,4 +1,4 @@
-/* Gaigai v1.7.4 */
+/* Gaigai v2.2.0 */
 
 :root {
     --g-c: #888888;
@@ -144,10 +144,12 @@
     margin-bottom: 8px; /* 与表格保持间距 */
     padding-top: 8px; /* 添加顶部内边距 */
     padding-bottom: 8px; /* 添加底部内边距 */
-    flex-wrap: wrap;
+    flex-wrap: nowrap !important;
     flex-shrink: 0;
     max-height: 80px;
-    overflow-y: auto;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
     background: rgba(255, 255, 255, 0.3); /* 添加背景色 */
     padding-left: 4px;
     padding-right: 4px;
