@@ -13098,12 +13098,6 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
 
             <div style="flex:1; overflow-y:auto; background:rgba(255,255,255,0.4); border-radius:8px; padding:15px; font-size:13px; line-height:1.6; border:1px solid rgba(255,255,255,0.3);">
 
-                <!--⚠️ 备份警告 -->
-                <div style="background:rgba(255, 165, 0, 0.1); border:1px solid rgba(255, 140, 0, 0.3); border-radius:6px; padding:8px; margin-bottom:15px; color:#d35400; font-size:11px; display:flex; align-items:center; gap:6px;">
-                    ⚠️
-                    <strong>安全提醒：</strong>更新插件前，请点击【📥 导出】备份数据！
-                </div>
-
                 <!-- ✅ 第一部分：本次更新日志 (高亮显示) -->
                 <div style="margin-bottom:20px; border-bottom:1px dashed rgba(0,0,0,0.1); padding-bottom:15px;">
                     <h4 style="margin-top:0; margin-bottom:10px; color:var(--g-tc); display:flex; align-items:center; gap:6px;">
