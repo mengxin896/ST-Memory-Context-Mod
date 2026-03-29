@@ -18,7 +18,7 @@
     class VectorManager {
         constructor() {
             // 📚 图书馆结构（替代旧版 customKnowledge）
-            // 格式: { "book_uuid": { name, chunks, vectors, createTime } }
+            // 格式: { "book_uuid": { name, chunks, vectors, vectorized, metas, createTime } }
             this.library = {};
 
             // 文本向量缓存（避免重复计算）
@@ -32,6 +32,9 @@
 
             // 🔒 安全锁：防止数据未加载时误保存
             this.isDataLoaded = false;
+
+            // 结构化抽取缓存：key = 总结行签名，value = 结构化单元数组
+            this.structuredRowCache = new Map();
 
             console.log('✅ [VectorManager] 初始化完成 (图书馆架构 + 世界书存储)');
 
@@ -64,7 +67,8 @@
                         chunks: oldData.map(item => item.content || ''),
                         vectors: oldData.map(item => item.vector || null),
                         createTime: Date.now(),
-                        vectorized: oldData.map(item => item.vectorized || false)
+                        vectorized: oldData.map(item => item.vectorized || false),
+                        metas: new Array(oldData.length).fill(null),
                     };
 
                     console.log(`✅ [数据迁移] 已将 ${oldData.length} 条旧数据迁移到"默认知识库"`);
@@ -257,6 +261,7 @@
                 if (explicitData && typeof explicitData === 'object') {
                     console.log('🔄 [VectorManager] 合并外部传入的数据...');
                     Object.assign(this.library, explicitData); // 温和合并,不覆盖
+                    this._normalizeLibrary();
                     this.isDataLoaded = true; // ✅ 解锁
                     return;
                 }
@@ -302,6 +307,7 @@
                         if (bookData && bookData.entries && bookData.entries["0"] && bookData.entries["0"].content) {
                             try {
                                 this.library = JSON.parse(bookData.entries["0"].content);
+                                this._normalizeLibrary();
                                 console.log(`📂 [VectorManager] 已从世界书加载: ${Object.keys(this.library).length} 本书`);
                                 loadedFromWorldInfo = true;
                             } catch (parseError) {
@@ -323,6 +329,7 @@
                     if (settings.vectorLibrary && typeof settings.vectorLibrary === 'object' && Object.keys(settings.vectorLibrary).length > 0) {
                         console.log('🔄 [数据迁移] 检测到旧配置中的数据，开始迁移到世界书...');
                         this.library = settings.vectorLibrary;
+                        this._normalizeLibrary();
                         console.log(`📂 [VectorManager] 已加载旧配置数据: ${Object.keys(this.library).length} 本书`);
 
                         // 标记为已加载，允许保存
@@ -337,6 +344,7 @@
                     } else {
                         // 完全没有数据，初始化为空
                         this.library = {};
+                        this._normalizeLibrary();
                         console.log('📂 [VectorManager] 图书馆为空 (无数据)');
                     }
                 }
@@ -349,6 +357,56 @@
                 this.library = {};
                 this.isDataLoaded = true; // 出错也解锁，避免死锁
             }
+        }
+
+        /**
+         * 🧹 规范化书籍结构，补齐 metas 等缺省字段
+         * @param {Object} book 原始书籍对象
+         * @returns {Object}
+         * @private
+         */
+        _normalizeBookShape(book) {
+            if (!book || typeof book !== 'object') {
+                return {
+                    name: '未命名知识库',
+                    chunks: [],
+                    vectors: [],
+                    vectorized: [],
+                    metas: [],
+                    createTime: Date.now(),
+                };
+            }
+
+            const chunks = Array.isArray(book.chunks) ? book.chunks : [];
+            const vectors = Array.isArray(book.vectors) ? book.vectors : new Array(chunks.length).fill(null);
+            const vectorized = Array.isArray(book.vectorized) ? book.vectorized : new Array(chunks.length).fill(false);
+            const metas = Array.isArray(book.metas) ? book.metas : new Array(chunks.length).fill(null);
+
+            while (vectors.length < chunks.length) vectors.push(null);
+            while (vectorized.length < chunks.length) vectorized.push(false);
+            while (metas.length < chunks.length) metas.push(null);
+
+            return {
+                ...book,
+                name: book.name || '未命名知识库',
+                chunks,
+                vectors,
+                vectorized,
+                metas,
+                createTime: book.createTime || Date.now(),
+            };
+        }
+
+        /**
+         * 🧹 规范化整个图书馆结构
+         * @private
+         */
+        _normalizeLibrary() {
+            const normalized = {};
+            Object.entries(this.library || {}).forEach(([bookId, book]) => {
+                normalized[bookId] = this._normalizeBookShape(book);
+            });
+            this.library = normalized;
         }
 
         /**
@@ -446,6 +504,16 @@
         }
 
         /**
+         * 🧼 清洗字符串
+         * @param {any} value 原始值
+         * @returns {string}
+         * @private
+         */
+        _cleanString(value) {
+            return String(value == null ? '' : value).replace(/\r\n/g, '\n').trim();
+        }
+
+        /**
          * 🔄 替换文本中的占位符变量
          * @param {string} text - 要处理的文本
          * @returns {string} - 替换后的文本
@@ -480,6 +548,177 @@
                 console.error('❌ [VectorManager] 变量替换失败:', error);
                 return text; // 出错时返回原文本
             }
+        }
+
+        /**
+         * 🔧 获取结构化记忆工具模块
+         * @returns {Object}
+         * @private
+         */
+        _getStructuredMemoryTools() {
+            const tools = window.Gaigai?.StructuredMemory;
+            if (!tools) {
+                throw new Error('StructuredMemory 模块未加载');
+            }
+            return tools;
+        }
+
+        /**
+         * 🧾 获取结构化抽取提示词
+         * @returns {string}
+         * @private
+         */
+        _getStructuredPrompt() {
+            return window.Gaigai?.PromptManager?.get?.('structuredMemoryPrompt')
+                || window.Gaigai?.PromptManager?.DEFAULT_STRUCTURED_MEMORY_PROMPT
+                || '';
+        }
+
+        /**
+         * 🧱 构造单条总结的结构化抽取消息
+         * @param {Object} rowContext 总结行上下文
+         * @returns {Array}
+         * @private
+         */
+        _buildStructuredMessages(rowContext) {
+            const prompt = this._getStructuredPrompt();
+            if (!prompt) {
+                throw new Error('未配置结构化记忆抽取提示词');
+            }
+
+            const payload = {
+                sourceRowIndex: rowContext.sourceRowIndex,
+                title: rowContext.sourceTitle,
+                note: rowContext.sourceNote,
+                content: rowContext.sourceContent,
+            };
+
+            return [
+                { role: 'system', content: prompt },
+                {
+                    role: 'user',
+                    content: [
+                        '请把下面这条总结拆成结构化记忆 JSON 数组。',
+                        JSON.stringify(payload, null, 2),
+                    ].join('\n\n'),
+                },
+            ];
+        }
+
+        /**
+         * 🤖 调用现有 API 链路执行结构化抽取
+         * @param {Object} rowContext 总结行上下文
+         * @returns {Promise<Array<{meta:Object,text:string}>>}
+         * @private
+         */
+        async _extractStructuredUnitsFromRow(rowContext) {
+            const structuredTools = this._getStructuredMemoryTools();
+            const rowHash = structuredTools.hashSummaryRow(rowContext);
+            if (this.structuredRowCache.has(rowHash)) {
+                return structuredTools.normalizeStructuredUnits(
+                    this.structuredRowCache.get(rowHash),
+                    rowContext
+                );
+            }
+
+            const messages = this._buildStructuredMessages(rowContext);
+            const apiFunc = window.Gaigai?.config?.useIndependentAPI
+                ? window.Gaigai?.tools?.callIndependentAPI
+                : window.Gaigai?.tools?.callTavernAPI;
+
+            if (typeof apiFunc !== 'function') {
+                throw new Error('结构化抽取 API 不可用');
+            }
+
+            const result = await apiFunc(messages);
+            if (!result?.success || !result.summary) {
+                throw new Error(result?.error || '结构化抽取返回为空');
+            }
+
+            const parsedUnits = structuredTools.parseStructuredResponse(result.summary);
+            this.structuredRowCache.set(rowHash, parsedUnits);
+            const normalizedUnits = structuredTools.normalizeStructuredUnits(parsedUnits, rowContext);
+            if (normalizedUnits.length === 0) {
+                throw new Error(`总结行 #${rowContext.sourceRowIndex} 未抽取到有效结构化事实`);
+            }
+
+            return normalizedUnits;
+        }
+
+        /**
+         * 🧾 从总结表构造所有结构化单元
+         * @param {Object} summarySheet 总结表
+         * @returns {Promise<Array<{meta:Object,text:string}>>}
+         * @private
+         */
+        async _buildStructuredSummarySnapshot(summarySheet, rowIndices = null) {
+            const allUnits = [];
+            const successfulRowIndices = [];
+            const failedRows = [];
+            const rowUnitsMap = {};
+            const targetRows = Array.isArray(rowIndices) ? rowIndices : summarySheet.r.map((_, index) => index);
+
+            for (const rowIndex of targetRows) {
+                const row = summarySheet.r[rowIndex];
+                if (!row) {
+                    continue;
+                }
+                const rowData = Array.isArray(row) ? row : Object.values(row);
+                const title = this._resolvePlaceholders(rowData[0] || '');
+                const content = this._resolvePlaceholders(rowData[1] || '');
+                const note = this._resolvePlaceholders(rowData[2] || '');
+
+                if (!this._cleanString(content)) {
+                    continue;
+                }
+
+                const rowContext = {
+                    sourceRowIndex: rowIndex,
+                    sourceTitle: title,
+                    sourceNote: note,
+                    sourceContent: content,
+                };
+
+                try {
+                    const units = await this._extractStructuredUnitsFromRow(rowContext);
+                    allUnits.push(...units);
+                    successfulRowIndices.push(rowIndex);
+                    rowUnitsMap[rowIndex] = units;
+                } catch (error) {
+                    console.warn(`⚠️ [VectorManager] 总结行 #${rowIndex} 结构化抽取失败: ${error.message}`);
+                    failedRows.push({
+                        rowIndex,
+                        title,
+                        error: error.message,
+                    });
+                }
+            }
+
+            return {
+                units: allUnits,
+                successfulRowIndices,
+                failedRows,
+                rowUnitsMap,
+            };
+        }
+
+        /**
+         * 📚 从当前总结表构造结构化快照
+         * @param {Object} options 选项
+         * @returns {Promise<Object>}
+         */
+        async buildStructuredSummarySnapshot(options = {}) {
+            const m = window.Gaigai?.m;
+            if (!m || !m.s || m.s.length === 0) {
+                throw new Error('Memory Manager 不可用');
+            }
+
+            const summarySheet = m.s[m.s.length - 1];
+            if (!summarySheet || !summarySheet.r) {
+                throw new Error('总结表无效');
+            }
+
+            return this._buildStructuredSummarySnapshot(summarySheet, options.rowIndices || null);
         }
 
         /**
@@ -784,6 +1023,7 @@
                     chunks: chunks.map(chunk => chunk.trim()),
                     vectors: new Array(chunks.length).fill(null),
                     vectorized: new Array(chunks.length).fill(false),
+                    metas: new Array(chunks.length).fill(null),
                     createTime: Date.now()
                 };
 
@@ -956,37 +1196,55 @@
 
                 // 检索绑定的知识库
                 for (const bookId of allowedBookIds) {
-                    const book = this.library[bookId];
+                    const book = this._normalizeBookShape(this.library[bookId]);
                     if (!book) continue;
 
                     for (let i = 0; i < book.chunks.length; i++) {
                         if (book.vectorized[i] && book.vectors[i]) {
                             // 计算基础向量相似度
                             const score = this.cosineSimilarity(queryVector, book.vectors[i]);
+                            const meta = book.metas[i] || null;
 
                             let finalScore = score;
                             let isKeywordHit = false;
                             let hitReason = '';
 
-                            // 🔍 增强版实体提取正则：支持 姓名/地点/物品/组织/设定
-                            // 匹配格式如： "姓名：张三"、"地点: 洛阳"、"Item: Excalibur"
-                            const entityRegex = /(?:姓名|名字|角色|Name|地点|位置|场景|Location|Place|物品|道具|装备|Item|Object|组织|势力|帮派|Organization|Group|设定|概念|Concept)[:：]\s*([^\s\n，,。.;；]+)/ig;
+                            if (meta) {
+                                const metaCandidates = [
+                                    meta.primaryName,
+                                    meta.relationshipTarget,
+                                    meta.place,
+                                    meta.title,
+                                    ...(Array.isArray(meta.names) ? meta.names : []),
+                                    ...(Array.isArray(meta.keywords) ? meta.keywords : []),
+                                ]
+                                    .map(value => this._cleanString(value))
+                                    .filter(value => value.length > 1);
 
-                            // 遍历所有可能的匹配项 (因为一个片段可能包含多个定义)
-                            let match;
-                            while ((match = entityRegex.exec(book.chunks[i])) !== null) {
-                                if (match[1]) {
-                                    const entityName = match[1].trim();
-                                    // 只有当实体名长度大于1时才匹配（避免匹配到 "我"、"他" 这种单字）
-                                    if (entityName.length > 1 && query.includes(entityName)) {
+                                for (const candidate of metaCandidates) {
+                                    if (query.includes(candidate)) {
                                         isKeywordHit = true;
-                                        hitReason = entityName;
-                                        break; // 只要命中一个关键词，就足够召回了
+                                        hitReason = candidate;
+                                        break;
+                                    }
+                                }
+                            } else {
+                                // 兼容旧书：回退到文本正则抽取
+                                const entityRegex = /(?:姓名|名字|角色|Name|地点|位置|场景|Location|Place|物品|道具|装备|Item|Object|组织|势力|帮派|Organization|Group|设定|概念|Concept|事件|关系)[:：]\s*([^\s\n，,。.;；]+)/ig;
+                                let match;
+                                while ((match = entityRegex.exec(book.chunks[i])) !== null) {
+                                    if (match[1]) {
+                                        const entityName = match[1].trim();
+                                        if (entityName.length > 1 && query.includes(entityName)) {
+                                            isKeywordHit = true;
+                                            hitReason = entityName;
+                                            break;
+                                        }
                                     }
                                 }
                             }
 
-                            // 策略 2: 短查询词兜底 (如果查询很短且片段包含查询词，也强制召回)
+                            // 策略 2: 短查询词兜底
                             if (!isKeywordHit && query.length < 15 && book.chunks[i].includes(query)) {
                                 isKeywordHit = true;
                                 hitReason = '短语精确匹配';
@@ -1001,14 +1259,19 @@
 
                             // ✅ 修复：内容去重
                             // 只有当这个文本片段没出现过时，才加入结果
-                            if (!seenContent.has(book.chunks[i])) {
-                                seenContent.add(book.chunks[i]); // 记录已添加的内容
+                            const dedupeKey = meta
+                                ? `${meta.type || 'legacy'}|${meta.primaryName || meta.title || ''}|${meta.sourceRowIndex ?? i}`
+                                : book.chunks[i];
+
+                            if (!seenContent.has(dedupeKey)) {
+                                seenContent.add(dedupeKey);
 
                                 results.push({
                                     text: book.chunks[i],
                                     source: `${book.name} 片段${i}`,
                                     score: finalScore,
-                                    type: isKeywordHit ? '关键词⭐' : '知识库'
+                                    type: isKeywordHit ? '关键词⭐' : '知识库',
+                                    meta,
                                 });
                             }
                         }
@@ -1101,80 +1364,35 @@
             try {
                 const m = window.Gaigai?.m;
                 if (!m || !m.s || m.s.length === 0) throw new Error('Memory Manager 不可用');
+                const structuredTools = this._getStructuredMemoryTools();
 
+                // 1. 构建新的结构化单元
                 const summarySheet = m.s[m.s.length - 1];
                 if (!summarySheet || !summarySheet.r) throw new Error('总结表无效');
 
-                // 1. 构建新的 chunks
-                const newChunks = [];
-                for (const row of summarySheet.r) {
-                    const rowData = Array.isArray(row) ? row : Object.values(row);
-                    const title = rowData[0] || '';
-                    const content = rowData[1] || '';
-                    const remark = rowData[2] || '';
-
-                    let chunkText = '';
-                    if (title) chunkText += title + (remark ? ` (${remark})` : '') + '\n';
-                    if (content) chunkText += content;
-
-                    chunkText = this._resolvePlaceholders(chunkText);
-                    if (chunkText.trim()) newChunks.push(chunkText.trim());
+                const snapshot = await this._buildStructuredSummarySnapshot(summarySheet);
+                const normalizedUnits = snapshot.units;
+                if (normalizedUnits.length === 0) {
+                    const firstError = snapshot.failedRows[0]?.error || '总结表内容无法抽取为结构化记忆';
+                    throw new Error(firstError);
                 }
-
-                if (newChunks.length === 0) throw new Error('总结表内容为空');
 
                 // 2. 准备 ID 和 旧数据
                 const sessionId = m.gid() || 'default';
                 const bookId = 'summary_book_' + sessionId;
                 const defaultBookName = '《剧情总结归档》';
+                const existingBook = this._normalizeBookShape(this.library[bookId]);
 
-                let existingVectorsMap = new Map(); // Map<Text, Vector>
-                let existingName = defaultBookName;
-                let existingCreateTime = Date.now();
-
-                // 3. 【核心修复】建立旧数据缓存索引
-                if (this.library[bookId]) {
-                    const oldBook = this.library[bookId];
-                    existingName = oldBook.name;
-                    existingCreateTime = oldBook.createTime;
-
-                    // 将旧的 文本->向量 存入 Map
-                    oldBook.chunks.forEach((text, idx) => {
-                        if (oldBook.vectorized[idx] && oldBook.vectors[idx]) {
-                            existingVectorsMap.set(text, oldBook.vectors[idx]);
-                        }
-                    });
-                    console.log(`♻️ [缓存复用] 已索引 ${existingVectorsMap.size} 条旧向量`);
-                }
-
-                // 4. 构建新书籍数据 (尝试继承向量)
-                const newVectors = [];
-                const newVectorized = [];
-                let reusedCount = 0;
-
-                newChunks.forEach(text => {
-                    if (existingVectorsMap.has(text)) {
-                        // ✅ 命中缓存：内容没变，直接复用旧向量
-                        newVectors.push(existingVectorsMap.get(text));
-                        newVectorized.push(true);
-                        reusedCount++;
-                    } else {
-                        // ❌ 内容变了或新内容：重置为空，等待重新向量化
-                        newVectors.push(null);
-                        newVectorized.push(false);
-                    }
+                // 3. 根据 unitHash 复用旧向量
+                const nextBook = structuredTools.reconcileStructuredBook(existingBook, normalizedUnits, {
+                    fallbackName: defaultBookName,
+                    createTime: Date.now(),
                 });
 
-                // 5. 更新书架
-                this.library[bookId] = {
-                    name: existingName,
-                    chunks: newChunks,
-                    vectors: newVectors,     // 使用混合了旧数据的新数组
-                    vectorized: newVectorized, // 状态同步
-                    createTime: existingCreateTime
-                };
+                // 4. 更新书架
+                this.library[bookId] = nextBook;
 
-                console.log(`📝 [增量同步] 书籍已更新。复用旧向量: ${reusedCount} 条, 待计算: ${newChunks.length - reusedCount} 条`);
+                console.log(`📝 [增量同步] 书籍已更新。复用旧向量: ${nextBook.reusedCount} 条, 待计算: ${nextBook.chunks.length - nextBook.reusedCount} 条`);
 
                 this.saveLibrary();
 
@@ -1189,17 +1407,32 @@
 
                 // ⚡ 仅当有未向量化的内容时，才触发 API
                 if (autoVectorize) {
-                    const needsUpdate = newVectorized.includes(false);
+                    const needsUpdate = nextBook.vectorized.includes(false);
                     if (needsUpdate) {
                         console.log('⚡ [VectorManager] 检测到新内容，开始增量向量化...');
                         const vectorizeResult = await this.vectorizeBook(bookId);
-                        return { success: true, count: newChunks.length, vectorized: true, vectorizeResult };
+                        return {
+                            success: true,
+                            count: nextBook.chunks.length,
+                            bookId,
+                            vectorized: true,
+                            vectorizeResult,
+                            successfulRowIndices: snapshot.successfulRowIndices,
+                            failedRows: snapshot.failedRows,
+                        };
                     } else {
                         console.log('✅ [VectorManager] 所有内容命中缓存，无需调用 API');
                     }
                 }
 
-                return { success: true, count: newChunks.length, bookId, vectorized: false };
+                return {
+                    success: true,
+                    count: nextBook.chunks.length,
+                    bookId,
+                    vectorized: false,
+                    successfulRowIndices: snapshot.successfulRowIndices,
+                    failedRows: snapshot.failedRows,
+                };
 
             } catch (error) {
                 console.error('❌ [VectorManager] 同步失败:', error);
@@ -1278,21 +1511,26 @@
 
             // 导出图书馆（仅导出指定的书籍）
             lines.push('>>> 图书馆 <<<');
-            for (const [bookId, book] of booksToExport) {
+                for (const [bookId, book] of booksToExport) {
+                const safeBook = this._normalizeBookShape(book);
                 lines.push('=== 书籍信息 ===');
                 lines.push(`ID: ${bookId}`);
-                lines.push(`书名: ${book.name}`);
-                lines.push(`创建时间: ${book.createTime}`);
-                lines.push(`片段数量: ${book.chunks.length}`);
+                lines.push(`书名: ${safeBook.name}`);
+                lines.push(`创建时间: ${safeBook.createTime}`);
+                lines.push(`片段数量: ${safeBook.chunks.length}`);
                 lines.push('');
 
                 // 导出每个片段
-                for (let i = 0; i < book.chunks.length; i++) {
+                for (let i = 0; i < safeBook.chunks.length; i++) {
                     lines.push(`--- 片段 ${i} ---`);
-                    lines.push(book.chunks[i]);
-                    if (book.vectorized[i] && book.vectors[i]) {
+                    lines.push(safeBook.chunks[i]);
+                    if (safeBook.metas[i]) {
+                        lines.push('--- Meta (JSON) ---');
+                        lines.push(JSON.stringify(safeBook.metas[i]));
+                    }
+                    if (safeBook.vectorized[i] && safeBook.vectors[i]) {
                         lines.push('--- 向量 (Base64) ---');
-                        const vectorJson = JSON.stringify(book.vectors[i]);
+                        const vectorJson = JSON.stringify(safeBook.vectors[i]);
                         const vectorBase64 = btoa(unescape(encodeURIComponent(vectorJson)));
                         lines.push(vectorBase64);
                     } else {
@@ -1357,7 +1595,7 @@
 
                             // 开始新书
                             mode = 'book_meta';
-                            currentEntry = { chunks: [], vectors: [], vectorized: [] };
+                            currentEntry = { chunks: [], vectors: [], vectorized: [], metas: [] };
                             currentChunkIndex = -1;
                             currentBookId = null; // 重置ID
                             continue;
@@ -1367,6 +1605,12 @@
                             currentChunkIndex = parseInt(line.match(/\d+/)[0]);
                             mode = 'chunk_text';
                             currentEntry.chunks[currentChunkIndex] = '';
+                            continue;
+                        }
+
+                        if (line === '--- Meta (JSON) ---') {
+                            mode = 'chunk_meta';
+                            currentEntry.metas[currentChunkIndex] = null;
                             continue;
                         }
 
@@ -1395,6 +1639,15 @@
                             if (line && !line.startsWith('---')) {
                                 currentEntry.chunks[currentChunkIndex] += (currentEntry.chunks[currentChunkIndex] ? '\n' : '') + line;
                             }
+                        } else if (mode === 'chunk_meta') {
+                            if (line && !line.startsWith('---') && !line.startsWith('===')) {
+                                try {
+                                    currentEntry.metas[currentChunkIndex] = JSON.parse(line);
+                                } catch (e) {
+                                    console.error('❌ [VectorManager] Meta 解析失败:', e);
+                                    currentEntry.metas[currentChunkIndex] = null;
+                                }
+                            }
                         } else if (mode === 'chunk_vector') {
                             if (line && !line.startsWith('---') && !line.startsWith('===')) {
                                 try {
@@ -1421,6 +1674,7 @@
                 // 保留旧书架 (this.library)，将导入的新书 (newLibrary) 合并进去
                 // 如果ID相同，新导入的会覆盖旧的
                 Object.assign(this.library, newLibrary);
+                this._normalizeLibrary();
 
                 this.saveLibrary();
 
@@ -1928,13 +2182,22 @@
                 const statusIcon = isVectorized ? '✅' : '⏳';
                 const statusText = isVectorized ? '已向量化' : '待处理';
                 const statusColor = isVectorized ? '#4CAF50' : '#FF9800';
+                const meta = Array.isArray(book.metas) ? book.metas[index] : null;
+                const typeLabelMap = {
+                    character: '人物',
+                    event: '事件',
+                    location: '地点',
+                    item: '物品',
+                    relationship: '关系',
+                };
+                const typeLabel = meta?.type ? (typeLabelMap[meta.type] || meta.type) : '未分类';
                 const preview = chunk.substring(0, 100) + (chunk.length > 100 ? '...' : '');
 
                 return `
                     <div class="gg-chunk-item" data-index="${index}" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 8px; margin-bottom: 6px; background: rgba(255,255,255,0.02); cursor: pointer;">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                             <div style="font-size: 10px; color: ${UI.tc}; opacity: 0.7; font-weight: 600;">
-                                片段 ${index}
+                                片段 ${index} · ${typeLabel}
                             </div>
                             <span style="font-size: 10px; color: ${statusColor};">
                                 ${statusIcon} ${statusText}
@@ -2751,32 +3014,33 @@
 
                     const result = await self.syncSummaryToBook();
 
-                    if (result.success) {
-                        if (typeof toastr !== 'undefined') {
-                            toastr.success(`已同步 ${result.count} 条总结到《剧情总结归档》`, '同步成功');
-                        } else {
-                            await customAlert(`✅ 同步成功\n\n已同步 ${result.count} 条总结`, '成功');
+                        if (result.success) {
+                            if (typeof toastr !== 'undefined') {
+                                toastr.success(`已同步 ${result.count} 条总结到《剧情总结归档》`, '同步成功');
+                            } else {
+                                await customAlert(`✅ 同步成功\n\n已同步 ${result.count} 条总结`, '成功');
                         }
 
                         // 自动选中新创建/更新的书籍
                         self.selectedBookId = result.bookId;
                         self.showUI();
 
-                        // ✅ 新增：手动同步成功后，自动隐藏总结表的所有内容
+                        // ✅ 新增：手动同步成功后，仅隐藏结构化成功的总结行
                         const sumIdx = m.s.length - 1; // 总结表索引
-                        const sumSheet = m.get(sumIdx);
-                        if (sumSheet && sumSheet.r.length > 0) {
-                            // 遍历所有行进行隐藏标记
-                            for (let ri = 0; ri < sumSheet.r.length; ri++) {
+                        if (Array.isArray(result.successfulRowIndices)) {
+                            for (const ri of result.successfulRowIndices) {
                                 window.Gaigai.markAsSummarized(sumIdx, ri);
                             }
                             m.save(false, true); // 保存隐藏状态
-                            console.log('⚡[手动同步向量化] 已自动隐藏总结表所有行');
+                            console.log('⚡[手动同步向量化] 已自动隐藏结构化成功的总结行');
 
                             // 如果记忆表格主界面正开着，刷新它以显示绿色隐藏状态
                             if ($('#gai-main-pop').length > 0 && typeof window.Gaigai.shw === 'function') {
                                 window.Gaigai.shw();
                             }
+                        }
+                        if (Array.isArray(result.failedRows) && result.failedRows.length > 0) {
+                            console.warn('⚠️ [手动同步向量化] 以下总结行结构化失败，保持可见:', result.failedRows);
                         }
                     } else {
                         throw new Error(result.error || '同步失败');
@@ -2809,6 +3073,7 @@
                         chunks: [],
                         vectors: [],
                         vectorized: [],
+                        metas: [],
                         createTime: Date.now()
                     };
 
@@ -3135,6 +3400,7 @@
                     book.chunks = newChunks.map(chunk => chunk.trim());
                     book.vectors = new Array(newChunks.length).fill(null);
                     book.vectorized = new Array(newChunks.length).fill(false);
+                    book.metas = new Array(newChunks.length).fill(null);
 
                     // 保存到全局
                     self.saveLibrary();

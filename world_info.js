@@ -23,6 +23,47 @@
         }
 
         /**
+         * 🔧 获取结构化记忆工具模块
+         * @returns {Object}
+         * @private
+         */
+        _getStructuredMemoryTools() {
+            const tools = window.Gaigai?.StructuredMemory;
+            if (!tools) {
+                throw new Error('StructuredMemory 模块未加载');
+            }
+            return tools;
+        }
+
+        /**
+         * 🔧 构造结构化世界书条目
+         * @param {Array<{meta:Object,text:string}>} units 结构化单元
+         * @param {number} startUid 起始 UID
+         * @returns {Object}
+         * @private
+         */
+        _buildStructuredEntries(units, startUid = 0) {
+            const tools = this._getStructuredMemoryTools();
+            return tools.buildWorldInfoEntries(units, startUid, {
+                vectorized: window.Gaigai.config_obj.worldInfoVectorized ?? true,
+            });
+        }
+
+        /**
+         * 🔍 获取当前总结表的结构化快照
+         * @param {Object} options 选项
+         * @returns {Promise<Object>}
+         * @private
+         */
+        async _getStructuredSummarySnapshot(options = {}) {
+            if (!window.Gaigai?.VM || typeof window.Gaigai.VM.buildStructuredSummarySnapshot !== 'function') {
+                throw new Error('VectorManager 结构化快照接口不可用');
+            }
+
+            return await window.Gaigai.VM.buildStructuredSummarySnapshot(options);
+        }
+
+        /**
          * 🧼 [辅助方法] 获取稳定的世界书名称 (去除 Branch 后缀)
          * 目的：让主线和所有分支共用同一个世界书文件，防止文件爆炸
          */
@@ -75,21 +116,13 @@
                         console.log('✅ [智能同步] 内存数据已更新');
                     }
 
-                    // 2.2 调用API保存到硬盘
-                    const finalJson = { entries: importEntries, name: worldBookName };
-                    const saveRes = await fetch('/api/worldinfo/edit', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-                        body: JSON.stringify({ name: worldBookName, data: finalJson }),
-                        credentials: 'include'
-                    });
-
-                    if (saveRes.ok) {
-                        console.log('💾 [智能同步] 硬盘保存成功 (API模式)');
-                        return { mode: 'update', success: true };
-                    } else {
-                        throw new Error(`API保存失败: ${saveRes.status}`);
+                    // 2.2 优先使用原生 saveWorldInfo 触发运行态刷新
+                    const nativeSaved = await this._saveWorldInfoBook(worldBookName, importEntries, csrfToken);
+                    if (!nativeSaved) {
+                        throw new Error('世界书保存失败');
                     }
+
+                    return { mode: 'update', success: true };
 
                 } else {
                     // ==================== 创建模式：模拟文件上传 ====================
@@ -116,6 +149,44 @@
                 console.error('❌ [智能同步] 异常:', error);
                 return { mode: 'error', success: false, error: error.message };
             }
+        }
+
+        /**
+         * 💾 保存世界书并尽量触发运行态刷新
+         * @param {string} worldBookName 世界书名
+         * @param {Object} importEntries 条目对象
+         * @param {string} csrfToken CSRF 令牌
+         * @returns {Promise<boolean>}
+         * @private
+         */
+        async _saveWorldInfoBook(worldBookName, importEntries, csrfToken) {
+            try {
+                const ctx = typeof SillyTavern !== 'undefined' && typeof SillyTavern.getContext === 'function'
+                    ? SillyTavern.getContext()
+                    : null;
+                if (ctx && typeof ctx.saveWorldInfo === 'function') {
+                    await ctx.saveWorldInfo(worldBookName, { entries: importEntries, name: worldBookName }, true);
+                    console.log('💾 [智能同步] 原生 saveWorldInfo 保存成功');
+                    return true;
+                }
+            } catch (error) {
+                console.warn('⚠️ [智能同步] 原生 saveWorldInfo 保存失败，回退到 API:', error);
+            }
+
+            const finalJson = { entries: importEntries, name: worldBookName };
+            const saveRes = await fetch('/api/worldinfo/edit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                body: JSON.stringify({ name: worldBookName, data: finalJson }),
+                credentials: 'include'
+            });
+
+            if (!saveRes.ok) {
+                throw new Error(`API保存失败: ${saveRes.status}`);
+            }
+
+            console.log('💾 [智能同步] 硬盘保存成功 (API模式)');
+            return true;
         }
 
         /**
@@ -187,46 +258,17 @@
                     return;
                 }
 
-                console.log(`⚡ [世界书同步-覆盖] 开始打包 ${summarySheet.r.length} 条数据...`);
+                console.log(`⚡ [世界书同步-覆盖] 开始结构化打包 ${summarySheet.r.length} 条总结...`);
 
                 // --- 准备数据 ---
                 const worldBookName = this._getStableBookName(m.gid());
-                const uniqueId = m.gid() || "Unknown_Chat";
-                const safeName = uniqueId.replace(/[\\/:*?"<>|]/g, "_");
-                const importEntries = {};
-                let maxUid = -1;
+                const snapshot = await this._getStructuredSummarySnapshot();
+                if (!snapshot.units || snapshot.units.length === 0) {
+                    throw new Error(snapshot.failedRows?.[0]?.error || '世界书同步未获得结构化条目');
+                }
 
-                // 构建全量数据
-                summarySheet.r.forEach((row, index) => {
-                    const uid = index;
-                    maxUid = uid;
-                    const title = row[0] || '无标题';
-                    const rowContent = row[1] || '';
-                    const note = (row[2] && row[2].trim()) ? row[2].trim() : '';
-
-                    // ✅ 智能引用表格备注作为前缀
-                    let displayTitle = title;
-                    if (note) {
-                        displayTitle = `【${note}】 ${title}`;
-                    }
-
-                    importEntries[uid] = {
-                        uid: uid,
-                        key: ["总结", "summary", "前情提要", "memory", "记忆"],
-                        keysecondary: [],
-                        comment: displayTitle,
-                        content: `【${title}${note ? ' [' + note + ']' : ''}】\n${rowContent}`,
-                        constant: false,
-                        vectorized: window.Gaigai.config_obj.worldInfoVectorized ?? true,
-                        enabled: true,
-                        position: 1,
-                        order: 100,
-                        extensions: { position: 1, exclude_recursion: false, display_index: 0, probability: 100, useProbability: true }
-                    };
-                });
-
-                // 🔥 关键修复：上传文件只需要 entries，不需要 name 包装（根据V10测试结果）
-                const finalJson = { entries: importEntries };
+                const importEntries = this._buildStructuredEntries(snapshot.units, 0);
+                const maxUid = Math.max(-1, ...Object.keys(importEntries).map(key => parseInt(key, 10)).filter(uid => !isNaN(uid)));
 
                 // 获取 CSRF
                 let csrfToken = '';
@@ -370,8 +412,6 @@
             try {
                 // --- 准备基础数据 ---
                 const worldBookName = this._getStableBookName(m.gid());
-                const uniqueId = m.gid() || "Unknown_Chat";
-                const safeName = uniqueId.replace(/[\\/:*?"<>|]/g, "_");
 
                 // 获取 CSRF
                 let csrfToken = '';
@@ -438,43 +478,24 @@
                     throw e;
                 }
 
-                // --- 2. 构建新条目 ---
-                const newUid = maxExistingUid + 1;
-
-                // ✅ 从总结表获取最新的标题和备注
-                let displayTitle = `[追加于 ${new Date().toLocaleString()}]`; // Default fallback
+                // --- 2. 构建本次新增总结对应的结构化条目 ---
                 const summarySheet = m.get(m.s.length - 1);
-
-                if (summarySheet && summarySheet.r.length > 0) {
-                    // 我们同步的内容对应刚刚保存的最后一行
-                    const lastRow = summarySheet.r[summarySheet.r.length - 1];
-                    const rowTitle = lastRow[0] || '剧情总结';
-                    const rowNote = (lastRow[2] && lastRow[2].trim()) ? lastRow[2].trim() : '';
-
-                    if (rowNote) {
-                        displayTitle = `【${rowNote}】 ${rowTitle}`;
-                    } else {
-                        displayTitle = rowTitle;
-                    }
+                const lastRowIndex = summarySheet && summarySheet.r.length > 0 ? summarySheet.r.length - 1 : -1;
+                if (lastRowIndex < 0) {
+                    throw new Error('总结表为空，无法执行结构化追加同步');
                 }
 
-                const newEntry = {
-                    uid: newUid,
-                    key: ["总结", "summary", "前情提要", "memory", "记忆"],
-                    keysecondary: [],
-                    comment: displayTitle, // ✅ Use the correct title from table
-                    content: content,
-                    constant: false,
-                    vectorized: window.Gaigai.config_obj.worldInfoVectorized ?? true,
-                    enabled: true,
-                    position: 1,
-                    order: 100,
-                    extensions: { position: 1, exclude_recursion: false, display_index: 0, probability: 100, useProbability: true }
-                };
+                const snapshot = await this._getStructuredSummarySnapshot({ rowIndices: [lastRowIndex] });
+                if (!snapshot.units || snapshot.units.length === 0) {
+                    throw new Error(snapshot.failedRows?.[0]?.error || '新增总结未抽取到结构化条目');
+                }
+
+                const newEntries = this._buildStructuredEntries(snapshot.units, maxExistingUid + 1);
 
                 // --- 3. 合并条目 ---
-                const mergedEntries = { ...existingEntries, [newUid]: newEntry };
-                console.log(`➕ [世界书同步-追加] 新增条目 UID ${newUid}，总条目数: ${Object.keys(mergedEntries).length}`);
+                const mergedEntries = { ...existingEntries, ...newEntries };
+                const newUidCount = Object.keys(newEntries).length;
+                console.log(`➕ [世界书同步-追加] 新增结构化条目 ${newUidCount} 条，总条目数: ${Object.keys(mergedEntries).length}`);
 
                 // --- 4. 同步到服务器（始终使用智能同步，避免 UI 重复刷新）---
                 console.log('⚡ [世界书同步-追加] 准备同步到服务器...');
@@ -482,7 +503,7 @@
 
                 // 更新缓存
                 this.globalWorldInfoEntriesCache = mergedEntries;
-                this.globalLastWorldInfoUid = newUid;
+                this.globalLastWorldInfoUid = Math.max(maxExistingUid, ...Object.keys(newEntries).map(key => parseInt(key, 10)).filter(uid => !isNaN(uid)));
 
                 // 🛑 等待 ST 处理 (只有首次创建需要等待UI刷新)
                 if (syncResult.mode === 'create') {

@@ -1585,16 +1585,26 @@
                         await window.Gaigai.syncToWorldInfo(cleanSummary);
                     }
 
-                    // ✅✅✅ [新增] 自动向量化开启时,自动隐藏总结表所有行
+                    // ✅✅✅ [新增] 自动向量化开启时，仅隐藏结构化成功的总结行
                     if (window.Gaigai.config_obj.autoVectorizeSummary) {
-                        const sumIdx = m.s.length - 1; // 总结表索引
-                        const sumSheet = m.get(sumIdx);
-                        if (sumSheet && sumSheet.r.length > 0) {
-                            // 遍历所有行进行隐藏标记(覆盖旧数据)
-                            for (let ri = 0; ri < sumSheet.r.length; ri++) {
-                                window.Gaigai.markAsSummarized(sumIdx, ri);
+                        try {
+                            const syncResult = await window.Gaigai.VM.syncSummaryToBook(true);
+                            const sumIdx = m.s.length - 1; // 总结表索引
+
+                            if (Array.isArray(syncResult.successfulRowIndices)) {
+                                for (const ri of syncResult.successfulRowIndices) {
+                                    window.Gaigai.markAsSummarized(sumIdx, ri);
+                                }
                             }
-                            console.log('⚡ [自动向量化] 已自动隐藏总结表所有行');
+
+                            if (Array.isArray(syncResult.failedRows) && syncResult.failedRows.length > 0) {
+                                console.warn('⚠️ [自动向量化] 以下总结行结构化失败，保持可见:', syncResult.failedRows);
+                                if (typeof toastr !== 'undefined') {
+                                    toastr.warning(`有 ${syncResult.failedRows.length} 条总结结构化失败，已保留原行`, '结构化记忆', { timeOut: 3000 });
+                                }
+                            }
+                        } catch (vecErr) {
+                            console.error('❌ [自动向量化] 结构化同步失败:', vecErr);
                         }
                     }
 
@@ -1861,16 +1871,21 @@
                         m.sm.save(editedSummary, noteValue);
                         await window.Gaigai.syncToWorldInfo(editedSummary);
 
-                        // ✅✅✅ [新增] 自动向量化开启时,自动隐藏总结表所有行
+                        // ✅✅✅ [新增] 自动向量化开启时，仅隐藏结构化成功的总结行
                         if (window.Gaigai.config_obj.autoVectorizeSummary) {
-                            const sumIdx = m.s.length - 1; // 总结表索引
-                            const sumSheet = m.get(sumIdx);
-                            if (sumSheet && sumSheet.r.length > 0) {
-                                // 遍历所有行进行隐藏标记(覆盖旧数据)
-                                for (let ri = 0; ri < sumSheet.r.length; ri++) {
-                                    window.Gaigai.markAsSummarized(sumIdx, ri);
+                            try {
+                                const syncResult = await window.Gaigai.VM.syncSummaryToBook(true);
+                                const sumIdx = m.s.length - 1; // 总结表索引
+                                if (Array.isArray(syncResult.successfulRowIndices)) {
+                                    for (const ri of syncResult.successfulRowIndices) {
+                                        window.Gaigai.markAsSummarized(sumIdx, ri);
+                                    }
                                 }
-                                console.log('⚡ [自动向量化] 已自动隐藏总结表所有行');
+                                if (Array.isArray(syncResult.failedRows) && syncResult.failedRows.length > 0) {
+                                    console.warn('⚠️ [自动向量化] 以下总结行结构化失败，保持可见:', syncResult.failedRows);
+                                }
+                            } catch (vecErr) {
+                                console.error('❌ [自动向量化] 结构化同步失败:', vecErr);
                             }
                         }
 
@@ -2900,21 +2915,19 @@
 
                         m.save(false, true); // 追加总结后立即保存
 
-                        // ✅✅✅ [新增] 总结优化保存后，触发自动向量化并隐藏总结表所有行
+                        // ✅✅✅ [新增] 总结优化保存后，触发自动向量化并仅隐藏成功行
                         if (window.Gaigai.config_obj.autoVectorizeSummary && window.Gaigai.VM && typeof window.Gaigai.VM.syncSummaryToBook === 'function') {
                             try {
                                 console.log('⚡ [总结优化] 触发自动向量化同步...');
-                                // 强制将当前总结表覆盖同步到知识书，并执行向量化
-                                await window.Gaigai.VM.syncSummaryToBook(true);
-
                                 const sumIdx = m.s.length - 1; // 总结表索引
-                                const sumSheet = m.get(sumIdx);
-                                if (sumSheet && sumSheet.r.length > 0) {
-                                    // 遍历所有行进行隐藏标记
-                                    for (let ri = 0; ri < sumSheet.r.length; ri++) {
+                                const syncResult = await window.Gaigai.VM.syncSummaryToBook(true);
+                                if (Array.isArray(syncResult.successfulRowIndices)) {
+                                    for (const ri of syncResult.successfulRowIndices) {
                                         window.Gaigai.markAsSummarized(sumIdx, ri);
                                     }
-                                    console.log('⚡ [总结优化] 已自动隐藏总结表所有行');
+                                }
+                                if (Array.isArray(syncResult.failedRows) && syncResult.failedRows.length > 0) {
+                                    console.warn('⚠️ [总结优化] 以下总结行结构化失败，保持可见:', syncResult.failedRows);
                                 }
                             } catch (vecErr) {
                                 console.error('❌ [总结优化] 自动向量化失败:', vecErr);
@@ -3079,21 +3092,19 @@
 
                         m.save(false, true); // 总结优化后立即保存
 
-                        // ✅✅✅ [新增] 总结优化保存后，触发自动向量化并隐藏总结表所有行
+                        // ✅✅✅ [新增] 总结优化保存后，触发自动向量化并仅隐藏成功行
                         if (window.Gaigai.config_obj.autoVectorizeSummary && window.Gaigai.VM && typeof window.Gaigai.VM.syncSummaryToBook === 'function') {
                             try {
                                 console.log('⚡ [总结优化] 触发自动向量化同步...');
-                                // 强制将当前总结表覆盖同步到知识书，并执行向量化
-                                await window.Gaigai.VM.syncSummaryToBook(true);
-
                                 const sumIdx = m.s.length - 1; // 总结表索引
-                                const sumSheet = m.get(sumIdx);
-                                if (sumSheet && sumSheet.r.length > 0) {
-                                    // 遍历所有行进行隐藏标记
-                                    for (let ri = 0; ri < sumSheet.r.length; ri++) {
+                                const syncResult = await window.Gaigai.VM.syncSummaryToBook(true);
+                                if (Array.isArray(syncResult.successfulRowIndices)) {
+                                    for (const ri of syncResult.successfulRowIndices) {
                                         window.Gaigai.markAsSummarized(sumIdx, ri);
                                     }
-                                    console.log('⚡ [总结优化] 已自动隐藏总结表所有行');
+                                }
+                                if (Array.isArray(syncResult.failedRows) && syncResult.failedRows.length > 0) {
+                                    console.warn('⚠️ [总结优化] 以下总结行结构化失败，保持可见:', syncResult.failedRows);
                                 }
                             } catch (vecErr) {
                                 console.error('❌ [总结优化] 自动向量化失败:', vecErr);

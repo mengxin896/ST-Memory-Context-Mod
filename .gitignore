@@ -33,3 +33,4 @@ user_data/
 # Test Files (测试文件)
 test/
 test_data/
+.ace-tool/
