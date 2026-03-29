@@ -1,0 +1,2057 @@
+﻿diff --git a/.gitignore b/.gitignore
+index b690c34..3498778 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -33,3 +33,4 @@ user_data/
+ # Test Files (测试文件)
+ test/
+ test_data/
++.ace-tool/
+diff --git a/index.js b/index.js
+index c572fc1..c288772 100644
+--- a/index.js
++++ b/index.js
+@@ -12847,61 +12847,78 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
+                                             .done(function () {
+                                                 console.log('✅ [Loader] world_info.js 加载成功');
+ 
+-                                                // 🆕 加载 summary_manager.js
+-                                                const summaryManagerUrl = `${EXTENSION_PATH}/summary_manager.js`;
+-                                                $.getScript(summaryManagerUrl)
++                                                // 🆕 加载 structured_memory.js
++                                                const structuredMemoryUrl = `${EXTENSION_PATH}/structured_memory.js`;
++                                                $.getScript(structuredMemoryUrl)
+                                                     .done(function () {
+-                                                        console.log('✅ [Loader] summary_manager.js 加载成功');
++                                                        console.log('✅ [Loader] structured_memory.js 加载成功');
+ 
+-                                                        // 🆕 加载 vector_manager.js
+-                                                        const vectorManagerUrl = `${EXTENSION_PATH}/vector_manager.js`;
+-                                                        $.getScript(vectorManagerUrl)
++                                                        // 🆕 加载 summary_manager.js
++                                                        const summaryManagerUrl = `${EXTENSION_PATH}/summary_manager.js`;
++                                                        $.getScript(summaryManagerUrl)
+                                                             .done(function () {
+-                                                                console.log('✅ [Loader] vector_manager.js 加载成功');
+-
+-                                                                // ✨ 验证模块是否成功挂载
+-                                                                if (!window.Gaigai.DebugManager) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.DebugManager 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${debugManagerUrl}`);
+-                                                                }
+-                                                                if (!window.Gaigai.IOManager) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.IOManager 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${ioManagerUrl}`);
+-                                                                }
+-                                                                if (!window.Gaigai.SummaryManager) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.SummaryManager 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${summaryManagerUrl}`);
+-                                                                }
+-                                                                if (!window.Gaigai.BackfillManager) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.BackfillManager 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${backfillManagerUrl}`);
+-                                                                }
+-                                                                if (!window.Gaigai.WI) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.WI 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${worldInfoUrl}`);
+-                                                                }
+-                                                                if (!window.Gaigai.VM) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.VM 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${vectorManagerUrl}`);
+-                                                                }
+-
+-                                                                // 📱 加载手机插件适配模块
+-                                                                const phoneAdapterUrl = `${EXTENSION_PATH}/phone-adapter.js`;
+-                                                                $.getScript(phoneAdapterUrl)
++                                                                console.log('✅ [Loader] summary_manager.js 加载成功');
++
++                                                                // 🆕 加载 vector_manager.js
++                                                                const vectorManagerUrl = `${EXTENSION_PATH}/vector_manager.js`;
++                                                                $.getScript(vectorManagerUrl)
+                                                                     .done(function () {
+-                                                                        console.log('✅ [Loader] phone-adapter.js 加载成功');
+-                                                                        // 所有依赖加载完后，再启动主初始化流程
+-                                                                        setTimeout(tryInit, 500);
++                                                                        console.log('✅ [Loader] vector_manager.js 加载成功');
++
++                                                                        // ✨ 验证模块是否成功挂载
++                                                                        if (!window.Gaigai.DebugManager) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.DebugManager 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${debugManagerUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.IOManager) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.IOManager 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${ioManagerUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.SummaryManager) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.SummaryManager 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${summaryManagerUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.BackfillManager) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.BackfillManager 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${backfillManagerUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.WI) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.WI 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${worldInfoUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.StructuredMemory) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.StructuredMemory 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${structuredMemoryUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.VM) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.VM 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${vectorManagerUrl}`);
++                                                                        }
++
++                                                                        // 📱 加载手机插件适配模块
++                                                                        const phoneAdapterUrl = `${EXTENSION_PATH}/phone-adapter.js`;
++                                                                        $.getScript(phoneAdapterUrl)
++                                                                            .done(function () {
++                                                                                console.log('✅ [Loader] phone-adapter.js 加载成功');
++                                                                                // 所有依赖加载完后，再启动主初始化流程
++                                                                                setTimeout(tryInit, 500);
++                                                                            })
++                                                                            .fail(function () {
++                                                                                console.warn('⚠️ [Loader] phone-adapter.js 加载失败（可选模块，继续初始化）');
++                                                                                // 即使加载失败，也继续初始化
++                                                                                setTimeout(tryInit, 500);
++                                                                            });
+                                                                     })
+                                                                     .fail(function () {
+-                                                                        console.warn('⚠️ [Loader] phone-adapter.js 加载失败（可选模块，继续初始化）');
+-                                                                        // 即使加载失败，也继续初始化
++                                                                        console.error('❌ [Loader] vector_manager.js 加载失败！');
++                                                                        console.error(`📍 尝试加载的 URL: ${vectorManagerUrl}`);
++                                                                        // 即使加载失败，也继续初始化（降级模式）
+                                                                         setTimeout(tryInit, 500);
+                                                                     });
+                                                             })
+                                                             .fail(function (jqxhr, settings, exception) {
+-                                                                console.error('❌ [Loader] vector_manager.js 加载失败！');
+-                                                                console.error(`📍 尝试加载的 URL: ${vectorManagerUrl}`);
++                                                                console.error('❌ [Loader] summary_manager.js 加载失败！');
++                                                                console.error(`📍 尝试加载的 URL: ${summaryManagerUrl}`);
+                                                                 console.error(`📍 HTTP 状态码: ${jqxhr.status}`);
+                                                                 console.error(`📍 错误详情:`, exception);
+                                                                 console.error(`💡 提示：请检查文件是否存在，或控制台 Network 面板查看具体错误`);
+@@ -12910,8 +12927,8 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
+                                                             });
+                                                     })
+                                                     .fail(function (jqxhr, settings, exception) {
+-                                                        console.error('❌ [Loader] summary_manager.js 加载失败！');
+-                                                        console.error(`📍 尝试加载的 URL: ${summaryManagerUrl}`);
++                                                        console.error('❌ [Loader] structured_memory.js 加载失败！');
++                                                        console.error(`📍 尝试加载的 URL: ${structuredMemoryUrl}`);
+                                                         console.error(`📍 HTTP 状态码: ${jqxhr.status}`);
+                                                         console.error(`📍 错误详情:`, exception);
+                                                         console.error(`💡 提示：请检查文件是否存在，或控制台 Network 面板查看具体错误`);
+@@ -13252,4 +13269,4 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
+         return 0;
+     }
+ 
+-})();
+\ No newline at end of file
++})();
+diff --git a/prompt_manager.js b/prompt_manager.js
+index be83f6e..5bdf2a7 100644
+--- a/prompt_manager.js
++++ b/prompt_manager.js
+@@ -15,7 +15,7 @@
+ 
+     // ===== 常量定义 =====
+     const PROFILE_KEY = 'gg_profiles';  // 预设数据存储键
+-    const PROMPT_VERSION = 5.5;         // 提示词版本号
++    const PROMPT_VERSION = 5.6;         // 提示词版本号
+ 
+     // ========================================================================
+     // 默认提示词定义区
+@@ -594,6 +594,61 @@ insertRow(0, {0: "YYYY年MM月DD日", 1: "凌晨(HH:mm)", 2: "", 3: "在古神
+ 4. 【因果完整】：严禁为了精简而删除前因后果。保留导致人物关系变化、状态变更（如死亡、受伤、恢复、移动、获得/丢失物品）的关键逻辑。
+ 5. 【客观口吻】：保持绝对客观的记录风格。`;
+ 
++    // ----- 6. 结构化记忆抽取提示词 -----
++    const DEFAULT_STRUCTURED_MEMORY_PROMPT = `你现在是结构化记忆抽取器。你的唯一任务是把输入的单条剧情总结拆成强相关的独立事实单元。
++
++【输出要求】
++1. 只能输出 JSON 数组，严禁输出任何解释、Markdown、代码块、前后缀文字。
++2. 数组中的每个对象都只能表达一个强相关事实，禁止把人物、事件、地点、物品、关系混在同一个对象里。
++3. type 只能是以下五种之一：
++   - "character"
++   - "event"
++   - "location"
++   - "item"
++   - "relationship"
++4. 每个对象必须包含以下字段：
++   - "type": 字符串
++   - "title": 简短标题
++   - "summary": 只描述这一条事实本身的完整摘要
++   - "names": 相关人物或实体名数组，没有则给空数组
++   - "place": 地点，没有则给空字符串
++   - "time": 时间，没有则给空字符串
++   - "keywords": 关键词数组，没有则给空数组
++   - "sourceRowIndex": 直接照抄输入里的 sourceRowIndex
++5. summary 必须只保留该事实强相关的信息：
++   - character: 人物身份、状态、能力、动机变化
++   - event: 单个事件的起因、经过、结果
++   - location: 地点特征、地点状态、地点发生的重要变化
++   - item: 物品属性、归属、获得/失去/损坏
++   - relationship: 两个角色之间关系的建立、变化、破裂
++6. 如果一条总结里包含多个事实，必须拆成多个对象。
++7. 如果某个字段无法确定，必须返回空字符串或空数组，严禁编造。
++8. 如果输入完全无法拆出有效事实，返回 []。
++
++【示例输出】
++[
++  {
++    "type": "event",
++    "title": "张三在洛阳与李四决裂",
++    "summary": "张三在洛阳与李四公开争执并决裂，双方关系彻底破裂。",
++    "names": ["张三", "李四"],
++    "place": "洛阳",
++    "time": "第三天傍晚",
++    "keywords": ["决裂", "争执", "洛阳"],
++    "sourceRowIndex": 3
++  },
++  {
++    "type": "relationship",
++    "title": "张三与李四关系破裂",
++    "summary": "张三与李四从暂时盟友转为公开敌对。",
++    "names": ["张三", "李四"],
++    "place": "洛阳",
++    "time": "第三天傍晚",
++    "keywords": ["关系破裂", "敌对"],
++    "sourceRowIndex": 3
++  }
++]`;
++
+     // ========================================================================
+     // 预设管理系统
+     // ========================================================================
+@@ -762,6 +817,7 @@ insertRow(0, {0: "YYYY年MM月DD日", 1: "凌晨(HH:mm)", 2: "", 3: "在古神
+                 summaryPromptChat: DEFAULT_SUM_CHAT,
+                 backfillPrompt: DEFAULT_BACKFILL_PROMPT,
+                 summaryPromptOptimize: DEFAULT_SUM_OPTIMIZE,
++                structuredMemoryPrompt: DEFAULT_STRUCTURED_MEMORY_PROMPT,
+                 promptVersion: PROMPT_VERSION
+             };
+ 
+@@ -1429,6 +1485,7 @@ insertRow(0, {0: "YYYY年MM月DD日", 1: "凌晨(HH:mm)", 2: "", 3: "在古神
+                     summaryPromptChat: '',
+                     backfillPrompt: '',
+                     summaryPromptOptimize: '',
++                    structuredMemoryPrompt: '',
+                     promptVersion: PROMPT_VERSION
+                 };
+                 profilesData.profiles[newId] = {
+@@ -1599,6 +1656,7 @@ insertRow(0, {0: "YYYY年MM月DD日", 1: "凌晨(HH:mm)", 2: "", 3: "在古神
+                 currentData.summaryPromptTable = tempTablePmt;
+                 currentData.summaryPromptChat = tempChatPmt;
+                 currentData.summaryPromptOptimize = tempOptimizePmt;
++                currentData.structuredMemoryPrompt = currentData.structuredMemoryPrompt || DEFAULT_STRUCTURED_MEMORY_PROMPT;
+                 currentData.promptVersion = PROMPT_VERSION;
+ 
+                 delete currentData.summaryPrompt; // 移除旧字段
+@@ -1739,6 +1797,7 @@ insertRow(0, {0: "YYYY年MM月DD日", 1: "凌晨(HH:mm)", 2: "", 3: "在古神
+                             currentData.summaryPromptOptimize = DEFAULT_SUM_OPTIMIZE;
+                             tempOptimizePmt = DEFAULT_SUM_OPTIMIZE;
+                         }
++                        currentData.structuredMemoryPrompt = DEFAULT_STRUCTURED_MEMORY_PROMPT;
+ 
+                         currentData.promptVersion = PROMPT_VERSION;
+                         saveProfilesData(profilesData);
+@@ -1887,6 +1946,7 @@ insertRow(0, {0: "YYYY年MM月DD日", 1: "凌晨(HH:mm)", 2: "", 3: "在古神
+                 summaryPromptChat: DEFAULT_SUM_CHAT,
+                 backfillPrompt: DEFAULT_BACKFILL_PROMPT,
+                 summaryPromptOptimize: DEFAULT_SUM_OPTIMIZE,
++                structuredMemoryPrompt: DEFAULT_STRUCTURED_MEMORY_PROMPT,
+                 promptVersion: PROMPT_VERSION
+             };
+ 
+@@ -2648,6 +2708,7 @@ insertRow(0, {0: "YYYY年MM月DD日", 1: "凌晨(HH:mm)", 2: "", 3: "在古神
+         CHAT_HISTORY_END_MARKER: CHAT_HISTORY_END_MARKER,
+         DEFAULT_BACKFILL_PROMPT: DEFAULT_BACKFILL_PROMPT,
+         DEFAULT_SUM_OPTIMIZE: DEFAULT_SUM_OPTIMIZE,
++        DEFAULT_STRUCTURED_MEMORY_PROMPT: DEFAULT_STRUCTURED_MEMORY_PROMPT,
+         NSFW_UNLOCK: NSFW_UNLOCK,
+ 
+         // 版本信息
+diff --git a/structured_memory.js b/structured_memory.js
+new file mode 100644
+index 0000000..8d15e2c
+--- /dev/null
++++ b/structured_memory.js
+@@ -0,0 +1,410 @@
++/**
++ * 结构化记忆工具模块
++ *
++ * 职责：
++ * 1. 解析 AI 返回的结构化 JSON
++ * 2. 归一化结构化记忆单元
++ * 3. 将记忆单元序列化为稳定的 typed chunk 文本
++ * 4. 生成世界书条目所需的数据结构
++ *
++ * 说明：
++ * - 本文件同时兼容浏览器脚本加载与 Node.js 测试环境。
++ * - 所有函数都尽量保持纯函数，便于测试与多链路复用。
++ */
++(function (root, factory) {
++    if (typeof module === 'object' && module.exports) {
++        module.exports = factory();
++    } else {
++        const exported = factory();
++        root.Gaigai = root.Gaigai || {};
++        root.Gaigai.StructuredMemory = exported;
++    }
++})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
++    'use strict';
++
++    const TYPE_LABELS = {
++        character: '人物',
++        event: '事件',
++        location: '地点',
++        item: '物品',
++        relationship: '关系',
++    };
++
++    const VALID_TYPES = new Set(Object.keys(TYPE_LABELS));
++
++    /**
++     * 生成简单稳定哈希
++     * @param {string} text 输入文本
++     * @returns {string}
++     */
++    function simpleHash(text) {
++        const source = String(text || '');
++        let hash = 0;
++        for (let i = 0; i < source.length; i++) {
++            hash = ((hash << 5) - hash) + source.charCodeAt(i);
++            hash |= 0;
++        }
++        return Math.abs(hash).toString(36);
++    }
++
++    /**
++     * 统一清洗字符串
++     * @param {any} value 原始值
++     * @returns {string}
++     */
++    function cleanString(value) {
++        return String(value == null ? '' : value)
++            .replace(/\r\n/g, '\n')
++            .replace(/\u200b/g, '')
++            .trim();
++    }
++
++    /**
++     * 统一清洗数组字符串字段
++     * @param {any} value 原始值
++     * @returns {string[]}
++     */
++    function cleanStringArray(value) {
++        if (Array.isArray(value)) {
++            return Array.from(new Set(value.map(cleanString).filter(Boolean)));
++        }
++        const single = cleanString(value);
++        return single ? [single] : [];
++    }
++
++    /**
++     * 去掉 Markdown 代码块包装
++     * @param {string} text 返回文本
++     * @returns {string}
++     */
++    function stripCodeFence(text) {
++        const cleaned = cleanString(text);
++        const fenced = cleaned.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
++        return fenced ? fenced[1].trim() : cleaned;
++    }
++
++    /**
++     * 从 AI 文本中提取 JSON 数组
++     * @param {string} text AI 返回内容
++     * @returns {Array}
++     */
++    function parseStructuredResponse(text) {
++        const raw = stripCodeFence(text);
++        const start = raw.indexOf('[');
++        const end = raw.lastIndexOf(']');
++
++        if (start === -1 || end === -1 || end < start) {
++            throw new Error('结构化抽取结果中未找到 JSON 数组');
++        }
++
++        const jsonText = raw.slice(start, end + 1);
++        let parsed;
++        try {
++            parsed = JSON.parse(jsonText);
++        } catch (error) {
++            throw new Error(`结构化抽取 JSON 解析失败: ${error.message}`);
++        }
++
++        if (!Array.isArray(parsed)) {
++            throw new Error('结构化抽取结果不是 JSON 数组');
++        }
++
++        return parsed;
++    }
++
++    /**
++     * 计算总结行签名
++     * @param {Object} rowContext 总结行上下文
++     * @returns {string}
++     */
++    function hashSummaryRow(rowContext) {
++        const title = cleanString(rowContext?.sourceTitle);
++        const note = cleanString(rowContext?.sourceNote);
++        const content = cleanString(rowContext?.sourceContent);
++        return simpleHash([title, note, content].join('\n---\n'));
++    }
++
++    /**
++     * 构造结构化单元的稳定哈希
++     * @param {Object} meta 归一化后的 meta
++     * @returns {string}
++     */
++    function buildUnitHash(meta) {
++        return simpleHash([
++            meta.type,
++            meta.title,
++            meta.summary,
++            meta.names.join('|'),
++            meta.place,
++            meta.time,
++            meta.keywords.join('|'),
++        ].join('\n'));
++    }
++
++    /**
++     * 获取结构化单元的主实体
++     * @param {string[]} names 实体名数组
++     * @returns {string}
++     */
++    function getPrimaryName(names) {
++        return names[0] || '';
++    }
++
++    /**
++     * 获取关系对象
++     * @param {string} type 单元类型
++     * @param {string[]} names 实体名数组
++     * @returns {string}
++     */
++    function getRelationshipTarget(type, names) {
++        if (type !== 'relationship') {
++            return '';
++        }
++        return names[1] || '';
++    }
++
++    /**
++     * 将结构化单元序列化为稳定文本
++     * @param {Object} unitMeta 归一化后的 meta
++     * @returns {string}
++     */
++    function serializeStructuredUnit(unitMeta) {
++        const label = TYPE_LABELS[unitMeta.type] || unitMeta.type;
++        const keywords = unitMeta.keywords.length > 0 ? unitMeta.keywords.join(' | ') : '无';
++        const sourceNote = unitMeta.sourceNote || '无';
++        const relationshipTarget = unitMeta.relationshipTarget || '无';
++
++        return [
++            `类型：${label}`,
++            `标题：${unitMeta.title || '无标题'}`,
++            `主体：${unitMeta.primaryName || '无'}`,
++            `关系对象：${relationshipTarget}`,
++            `地点：${unitMeta.place || '未知'}`,
++            `时间：${unitMeta.time || '未知'}`,
++            `关键词：${keywords}`,
++            `摘要：${unitMeta.summary || '无'}`,
++            `来源标题：${unitMeta.sourceTitle || '无标题'}`,
++            `来源备注：${sourceNote}`,
++        ].join('\n');
++    }
++
++    /**
++     * 构造世界书展示内容
++     * @param {Object} meta 结构化单元 meta
++     * @param {string} vectorText 向量文本
++     * @returns {string}
++     */
++    function buildWorldInfoContent(meta, vectorText) {
++        return [
++            vectorText,
++            `来源索引：${meta.sourceRowIndex}`,
++        ].join('\n');
++    }
++
++    /**
++     * 归一化结构化记忆单元
++     * @param {Array} units AI 返回的结构化数组
++     * @param {Object} rowContext 总结行上下文
++     * @returns {Array<{meta:Object,text:string}>}
++     */
++    function normalizeStructuredUnits(units, rowContext) {
++        if (!Array.isArray(units)) {
++            throw new Error('结构化单元必须是数组');
++        }
++
++        const sourceRowIndex = Number.isInteger(rowContext?.sourceRowIndex) ? rowContext.sourceRowIndex : 0;
++        const sourceTitle = cleanString(rowContext?.sourceTitle) || '无标题';
++        const sourceNote = cleanString(rowContext?.sourceNote);
++        const sourceContent = cleanString(rowContext?.sourceContent);
++        const sourceHash = hashSummaryRow({ sourceTitle, sourceNote, sourceContent });
++        const results = [];
++        const dedupe = new Set();
++
++        for (const rawUnit of units) {
++            const type = cleanString(rawUnit?.type).toLowerCase();
++            if (!VALID_TYPES.has(type)) {
++                continue;
++            }
++
++            const names = cleanStringArray(rawUnit?.names);
++            const title = cleanString(rawUnit?.title) || names[0] || sourceTitle;
++            const summary = cleanString(rawUnit?.summary);
++            if (!summary) {
++                continue;
++            }
++
++            const meta = {
++                type,
++                title,
++                summary,
++                names,
++                place: cleanString(rawUnit?.place),
++                time: cleanString(rawUnit?.time),
++                keywords: cleanStringArray(rawUnit?.keywords),
++                sourceRowIndex,
++                sourceTitle,
++                sourceNote,
++                sourceHash,
++                primaryName: getPrimaryName(names),
++                relationshipTarget: getRelationshipTarget(type, names),
++            };
++
++            meta.unitHash = buildUnitHash(meta);
++            const dedupeKey = `${meta.type}|${meta.title}|${meta.primaryName}|${meta.relationshipTarget}|${meta.summary}`;
++            if (dedupe.has(dedupeKey)) {
++                continue;
++            }
++            dedupe.add(dedupeKey);
++
++            results.push({
++                meta,
++                text: serializeStructuredUnit(meta),
++            });
++        }
++
++        return results;
++    }
++
++    /**
++     * 构造世界书条目关键字
++     * @param {Object} meta 结构化单元 meta
++     * @returns {{key:string[], keysecondary:string[]}}
++     */
++    function buildWorldInfoKeys(meta) {
++        const primary = [];
++        const secondary = [];
++
++        if (meta.primaryName) primary.push(meta.primaryName);
++        if (meta.relationshipTarget) primary.push(meta.relationshipTarget);
++        if (meta.place) primary.push(meta.place);
++
++        for (const keyword of meta.keywords) {
++            if (!primary.includes(keyword)) {
++                secondary.push(keyword);
++            }
++        }
++
++        return {
++            key: Array.from(new Set(primary)).filter(Boolean),
++            keysecondary: Array.from(new Set(secondary)).filter(Boolean),
++        };
++    }
++
++    /**
++     * 批量构造世界书条目
++     * @param {Array<{meta:Object,text:string}>} normalizedUnits 归一化后的单元
++     * @param {number} startUid 起始 UID
++     * @param {Object} options 配置
++     * @returns {Object}
++     */
++    function buildWorldInfoEntries(normalizedUnits, startUid, options = {}) {
++        const vectorized = options.vectorized === true;
++        const entries = {};
++        let uid = startUid;
++
++        for (const unit of normalizedUnits) {
++            const meta = unit.meta;
++            const label = TYPE_LABELS[meta.type] || meta.type;
++            const { key, keysecondary } = buildWorldInfoKeys(meta);
++
++            entries[String(uid)] = {
++                uid,
++                key,
++                keysecondary,
++                comment: `【${label}】${meta.title || meta.primaryName || '未命名条目'}`,
++                content: buildWorldInfoContent(meta, unit.text),
++                constant: false,
++                vectorized,
++                enabled: true,
++                disable: false,
++                position: 1,
++                order: 100,
++                extensions: {
++                    position: 1,
++                    exclude_recursion: false,
++                    display_index: 0,
++                    probability: 100,
++                    useProbability: true,
++                },
++            };
++            uid++;
++        }
++
++        return entries;
++    }
++
++    /**
++     * 基于 unitHash 对结构化书籍做增量合并
++     * @param {Object|null} existingBook 旧书籍
++     * @param {Array<{meta:Object,text:string}>} normalizedUnits 新结构化单元
++     * @param {Object} options 配置
++     * @returns {Object}
++     */
++    function reconcileStructuredBook(existingBook, normalizedUnits, options = {}) {
++        const oldBook = existingBook || {};
++        const previousMetas = Array.isArray(oldBook.metas) ? oldBook.metas : [];
++        const previousVectors = Array.isArray(oldBook.vectors) ? oldBook.vectors : [];
++        const previousVectorized = Array.isArray(oldBook.vectorized) ? oldBook.vectorized : [];
++        const previousChunks = Array.isArray(oldBook.chunks) ? oldBook.chunks : [];
++        const reuseMap = new Map();
++
++        for (let index = 0; index < previousMetas.length; index++) {
++            const meta = previousMetas[index];
++            if (!meta || !meta.unitHash) {
++                continue;
++            }
++            if (!previousVectorized[index] || !previousVectors[index]) {
++                continue;
++            }
++            reuseMap.set(meta.unitHash, {
++                vector: previousVectors[index],
++                text: previousChunks[index],
++                meta,
++            });
++        }
++
++        const chunks = [];
++        const vectors = [];
++        const vectorized = [];
++        const metas = [];
++        let reusedCount = 0;
++
++        for (const unit of normalizedUnits) {
++            const cached = reuseMap.get(unit.meta.unitHash);
++            chunks.push(unit.text);
++            metas.push(unit.meta);
++
++            if (cached) {
++                vectors.push(cached.vector);
++                vectorized.push(true);
++                reusedCount++;
++            } else {
++                vectors.push(null);
++                vectorized.push(false);
++            }
++        }
++
++        return {
++            name: cleanString(oldBook.name) || cleanString(options.fallbackName) || '未命名知识库',
++            createTime: oldBook.createTime || options.createTime || Date.now(),
++            chunks,
++            vectors,
++            vectorized,
++            metas,
++            reusedCount,
++        };
++    }
++
++    return {
++        TYPE_LABELS,
++        VALID_TYPES,
++        parseStructuredResponse,
++        normalizeStructuredUnits,
++        serializeStructuredUnit,
++        buildWorldInfoContent,
++        buildWorldInfoEntries,
++        reconcileStructuredBook,
++        hashSummaryRow,
++        simpleHash,
++    };
++});
+diff --git a/summary_manager.js b/summary_manager.js
+index 964109f..52ea257 100644
+--- a/summary_manager.js
++++ b/summary_manager.js
+@@ -1585,16 +1585,26 @@
+                         await window.Gaigai.syncToWorldInfo(cleanSummary);
+                     }
+ 
+-                    // ✅✅✅ [新增] 自动向量化开启时,自动隐藏总结表所有行
++                    // ✅✅✅ [新增] 自动向量化开启时，仅隐藏结构化成功的总结行
+                     if (window.Gaigai.config_obj.autoVectorizeSummary) {
+-                        const sumIdx = m.s.length - 1; // 总结表索引
+-                        const sumSheet = m.get(sumIdx);
+-                        if (sumSheet && sumSheet.r.length > 0) {
+-                            // 遍历所有行进行隐藏标记(覆盖旧数据)
+-                            for (let ri = 0; ri < sumSheet.r.length; ri++) {
+-                                window.Gaigai.markAsSummarized(sumIdx, ri);
++                        try {
++                            const syncResult = await window.Gaigai.VM.syncSummaryToBook(true);
++                            const sumIdx = m.s.length - 1; // 总结表索引
++
++                            if (Array.isArray(syncResult.successfulRowIndices)) {
++                                for (const ri of syncResult.successfulRowIndices) {
++                                    window.Gaigai.markAsSummarized(sumIdx, ri);
++                                }
+                             }
+-                            console.log('⚡ [自动向量化] 已自动隐藏总结表所有行');
++
++                            if (Array.isArray(syncResult.failedRows) && syncResult.failedRows.length > 0) {
++                                console.warn('⚠️ [自动向量化] 以下总结行结构化失败，保持可见:', syncResult.failedRows);
++                                if (typeof toastr !== 'undefined') {
++                                    toastr.warning(`有 ${syncResult.failedRows.length} 条总结结构化失败，已保留原行`, '结构化记忆', { timeOut: 3000 });
++                                }
++                            }
++                        } catch (vecErr) {
++                            console.error('❌ [自动向量化] 结构化同步失败:', vecErr);
+                         }
+                     }
+ 
+@@ -1861,16 +1871,21 @@
+                         m.sm.save(editedSummary, noteValue);
+                         await window.Gaigai.syncToWorldInfo(editedSummary);
+ 
+-                        // ✅✅✅ [新增] 自动向量化开启时,自动隐藏总结表所有行
++                        // ✅✅✅ [新增] 自动向量化开启时，仅隐藏结构化成功的总结行
+                         if (window.Gaigai.config_obj.autoVectorizeSummary) {
+-                            const sumIdx = m.s.length - 1; // 总结表索引
+-                            const sumSheet = m.get(sumIdx);
+-                            if (sumSheet && sumSheet.r.length > 0) {
+-                                // 遍历所有行进行隐藏标记(覆盖旧数据)
+-                                for (let ri = 0; ri < sumSheet.r.length; ri++) {
+-                                    window.Gaigai.markAsSummarized(sumIdx, ri);
++                            try {
++                                const syncResult = await window.Gaigai.VM.syncSummaryToBook(true);
++                                const sumIdx = m.s.length - 1; // 总结表索引
++                                if (Array.isArray(syncResult.successfulRowIndices)) {
++                                    for (const ri of syncResult.successfulRowIndices) {
++                                        window.Gaigai.markAsSummarized(sumIdx, ri);
++                                    }
++                                }
++                                if (Array.isArray(syncResult.failedRows) && syncResult.failedRows.length > 0) {
++                                    console.warn('⚠️ [自动向量化] 以下总结行结构化失败，保持可见:', syncResult.failedRows);
+                                 }
+-                                console.log('⚡ [自动向量化] 已自动隐藏总结表所有行');
++                            } catch (vecErr) {
++                                console.error('❌ [自动向量化] 结构化同步失败:', vecErr);
+                             }
+                         }
+ 
+@@ -2900,21 +2915,19 @@
+ 
+                         m.save(false, true); // 追加总结后立即保存
+ 
+-                        // ✅✅✅ [新增] 总结优化保存后，触发自动向量化并隐藏总结表所有行
++                        // ✅✅✅ [新增] 总结优化保存后，触发自动向量化并仅隐藏成功行
+                         if (window.Gaigai.config_obj.autoVectorizeSummary && window.Gaigai.VM && typeof window.Gaigai.VM.syncSummaryToBook === 'function') {
+                             try {
+                                 console.log('⚡ [总结优化] 触发自动向量化同步...');
+-                                // 强制将当前总结表覆盖同步到知识书，并执行向量化
+-                                await window.Gaigai.VM.syncSummaryToBook(true);
+-
+                                 const sumIdx = m.s.length - 1; // 总结表索引
+-                                const sumSheet = m.get(sumIdx);
+-                                if (sumSheet && sumSheet.r.length > 0) {
+-                                    // 遍历所有行进行隐藏标记
+-                                    for (let ri = 0; ri < sumSheet.r.length; ri++) {
++                                const syncResult = await window.Gaigai.VM.syncSummaryToBook(true);
++                                if (Array.isArray(syncResult.successfulRowIndices)) {
++                                    for (const ri of syncResult.successfulRowIndices) {
+                                         window.Gaigai.markAsSummarized(sumIdx, ri);
+                                     }
+-                                    console.log('⚡ [总结优化] 已自动隐藏总结表所有行');
++                                }
++                                if (Array.isArray(syncResult.failedRows) && syncResult.failedRows.length > 0) {
++                                    console.warn('⚠️ [总结优化] 以下总结行结构化失败，保持可见:', syncResult.failedRows);
+                                 }
+                             } catch (vecErr) {
+                                 console.error('❌ [总结优化] 自动向量化失败:', vecErr);
+@@ -3079,21 +3092,19 @@
+ 
+                         m.save(false, true); // 总结优化后立即保存
+ 
+-                        // ✅✅✅ [新增] 总结优化保存后，触发自动向量化并隐藏总结表所有行
++                        // ✅✅✅ [新增] 总结优化保存后，触发自动向量化并仅隐藏成功行
+                         if (window.Gaigai.config_obj.autoVectorizeSummary && window.Gaigai.VM && typeof window.Gaigai.VM.syncSummaryToBook === 'function') {
+                             try {
+                                 console.log('⚡ [总结优化] 触发自动向量化同步...');
+-                                // 强制将当前总结表覆盖同步到知识书，并执行向量化
+-                                await window.Gaigai.VM.syncSummaryToBook(true);
+-
+                                 const sumIdx = m.s.length - 1; // 总结表索引
+-                                const sumSheet = m.get(sumIdx);
+-                                if (sumSheet && sumSheet.r.length > 0) {
+-                                    // 遍历所有行进行隐藏标记
+-                                    for (let ri = 0; ri < sumSheet.r.length; ri++) {
++                                const syncResult = await window.Gaigai.VM.syncSummaryToBook(true);
++                                if (Array.isArray(syncResult.successfulRowIndices)) {
++                                    for (const ri of syncResult.successfulRowIndices) {
+                                         window.Gaigai.markAsSummarized(sumIdx, ri);
+                                     }
+-                                    console.log('⚡ [总结优化] 已自动隐藏总结表所有行');
++                                }
++                                if (Array.isArray(syncResult.failedRows) && syncResult.failedRows.length > 0) {
++                                    console.warn('⚠️ [总结优化] 以下总结行结构化失败，保持可见:', syncResult.failedRows);
+                                 }
+                             } catch (vecErr) {
+                                 console.error('❌ [总结优化] 自动向量化失败:', vecErr);
+diff --git a/tests/structured_memory.test.js b/tests/structured_memory.test.js
+new file mode 100644
+index 0000000..2c6c73c
+--- /dev/null
++++ b/tests/structured_memory.test.js
+@@ -0,0 +1,258 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++
++const {
++    parseStructuredResponse,
++    normalizeStructuredUnits,
++    serializeStructuredUnit,
++    buildWorldInfoEntries,
++    reconcileStructuredBook,
++    hashSummaryRow,
++} = require('../structured_memory.js');
++
++/**
++ * 结构化记忆模块测试
++ * 目标：验证 AI 结构化输出解析、typed chunk 序列化、世界书条目生成的关键行为。
++ */
++
++test('parseStructuredResponse 能从 Markdown 代码块中提取 JSON 数组', () => {
++    const payload = [
++        {
++            type: 'event',
++            title: '张三在洛阳与李四决裂',
++            summary: '张三在洛阳与李四公开决裂。',
++            names: ['张三', '李四'],
++            place: '洛阳',
++            time: '第三天傍晚',
++            keywords: ['决裂', '洛阳'],
++            sourceRowIndex: 2,
++        },
++    ];
++
++    const parsed = parseStructuredResponse(`\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``);
++
++    assert.equal(Array.isArray(parsed), true);
++    assert.equal(parsed.length, 1);
++    assert.equal(parsed[0].type, 'event');
++    assert.equal(parsed[0].names[1], '李四');
++});
++
++test('normalizeStructuredUnits 会生成稳定的 typed meta 和序列化文本', () => {
++    const rowContext = {
++        sourceRowIndex: 1,
++        sourceTitle: '第一章总结',
++        sourceNote: '主线',
++        sourceContent: '张三在洛阳与李四决裂，并丢失玉佩。',
++    };
++
++    const units = normalizeStructuredUnits([
++        {
++            type: 'relationship',
++            title: '张三与李四决裂',
++            summary: '张三与李四的关系从盟友转为敌对。',
++            names: ['张三', '李四'],
++            place: '洛阳',
++            time: '第三天傍晚',
++            keywords: ['决裂', '盟友', '敌对'],
++        },
++        {
++            type: 'item',
++            title: '张三丢失玉佩',
++            summary: '张三在冲突后遗失玉佩。',
++            names: ['张三'],
++            place: '洛阳',
++            time: '第三天傍晚',
++            keywords: ['玉佩', '遗失'],
++        },
++    ], rowContext);
++
++    assert.equal(units.length, 2);
++    assert.equal(units[0].meta.type, 'relationship');
++    assert.equal(units[0].meta.primaryName, '张三');
++    assert.equal(units[0].meta.relationshipTarget, '李四');
++    assert.equal(units[0].meta.sourceRowIndex, 1);
++    assert.match(units[0].text, /类型：关系/);
++    assert.match(units[0].text, /关系对象：李四/);
++    assert.match(units[0].text, /来源标题：第一章总结/);
++    assert.match(units[1].text, /类型：物品/);
++});
++
++test('serializeStructuredUnit 使用固定字段顺序输出文本', () => {
++    const text = serializeStructuredUnit({
++        type: 'character',
++        title: '张三',
++        summary: '张三重伤昏迷。',
++        names: ['张三'],
++        place: '洛阳医馆',
++        time: '第三天深夜',
++        keywords: ['张三', '重伤', '昏迷'],
++        sourceRowIndex: 0,
++        sourceTitle: '角色状态总结',
++        sourceNote: '人物',
++        primaryName: '张三',
++        relationshipTarget: '',
++    });
++
++    const lines = text.split('\n');
++    assert.equal(lines[0], '类型：人物');
++    assert.equal(lines[1], '标题：张三');
++    assert.equal(lines[2], '主体：张三');
++    assert.equal(lines[3], '关系对象：无');
++    assert.equal(lines[4], '地点：洛阳医馆');
++    assert.equal(lines[5], '时间：第三天深夜');
++    assert.equal(lines[9], '来源备注：人物');
++});
++
++test('buildWorldInfoEntries 会为每个结构化单元生成独立世界书条目', () => {
++    const rowContext = {
++        sourceRowIndex: 3,
++        sourceTitle: '主线推进',
++        sourceNote: '第二章',
++        sourceContent: '张三在洛阳与李四决裂。',
++    };
++
++    const [unit] = normalizeStructuredUnits([
++        {
++            type: 'event',
++            title: '张三在洛阳与李四决裂',
++            summary: '张三在洛阳公开与李四决裂。',
++            names: ['张三', '李四'],
++            place: '洛阳',
++            time: '第三天傍晚',
++            keywords: ['决裂', '洛阳', '张三'],
++        },
++    ], rowContext);
++
++    const entries = buildWorldInfoEntries([unit], 10, { vectorized: true });
++
++    assert.deepEqual(Object.keys(entries), ['10']);
++    assert.equal(entries['10'].uid, 10);
++    assert.equal(entries['10'].comment, '【事件】张三在洛阳与李四决裂');
++    assert.equal(entries['10'].vectorized, true);
++    assert.match(entries['10'].content, /类型：事件/);
++    assert.match(entries['10'].content, /来源索引：3/);
++    assert.equal(entries['10'].key.includes('张三'), true);
++});
++
++test('hashSummaryRow 对同一总结行生成稳定签名', () => {
++    const a = hashSummaryRow({
++        sourceTitle: '第一章总结',
++        sourceNote: '主线',
++        sourceContent: '张三在洛阳与李四决裂。',
++    });
++    const b = hashSummaryRow({
++        sourceTitle: '第一章总结',
++        sourceNote: '主线',
++        sourceContent: '张三在洛阳与李四决裂。',
++    });
++    const c = hashSummaryRow({
++        sourceTitle: '第一章总结',
++        sourceNote: '主线',
++        sourceContent: '张三在洛阳与王五和解。',
++    });
++
++    assert.equal(a, b);
++    assert.notEqual(a, c);
++});
++
++test('reconcileStructuredBook 会按 unitHash 复用旧向量并为新条目留空', () => {
++    const rowContext = {
++        sourceRowIndex: 1,
++        sourceTitle: '第一章总结',
++        sourceNote: '主线',
++        sourceContent: '张三在洛阳与李四决裂，并丢失玉佩。',
++    };
++
++    const existingUnits = normalizeStructuredUnits([
++        {
++            type: 'event',
++            title: '张三在洛阳与李四决裂',
++            summary: '张三在洛阳与李四公开争执并决裂。',
++            names: ['张三', '李四'],
++            place: '洛阳',
++            time: '第三天傍晚',
++            keywords: ['决裂', '洛阳'],
++        },
++    ], rowContext);
++
++    const existingBook = {
++        name: '《剧情总结归档》',
++        createTime: 100,
++        chunks: [existingUnits[0].text],
++        vectors: [[0.1, 0.2, 0.3]],
++        vectorized: [true],
++        metas: [existingUnits[0].meta],
++    };
++
++    const nextUnits = normalizeStructuredUnits([
++        {
++            type: 'event',
++            title: '张三在洛阳与李四决裂',
++            summary: '张三在洛阳与李四公开争执并决裂。',
++            names: ['张三', '李四'],
++            place: '洛阳',
++            time: '第三天傍晚',
++            keywords: ['决裂', '洛阳'],
++        },
++        {
++            type: 'item',
++            title: '张三丢失玉佩',
++            summary: '张三在冲突后遗失玉佩。',
++            names: ['张三'],
++            place: '洛阳',
++            time: '第三天傍晚',
++            keywords: ['玉佩', '遗失'],
++        },
++    ], rowContext);
++
++    const snapshot = reconcileStructuredBook(existingBook, nextUnits, {
++        fallbackName: '《剧情总结归档》',
++        createTime: 200,
++    });
++
++    assert.equal(snapshot.reusedCount, 1);
++    assert.equal(snapshot.chunks.length, 2);
++    assert.deepEqual(snapshot.vectors[0], [0.1, 0.2, 0.3]);
++    assert.equal(snapshot.vectorized[0], true);
++    assert.equal(snapshot.vectors[1], null);
++    assert.equal(snapshot.vectorized[1], false);
++    assert.equal(snapshot.metas[1].type, 'item');
++    assert.equal(snapshot.createTime, 100);
++});
++
++test('reconcileStructuredBook 在旧书没有 metas 时会安全降级', () => {
++    const rowContext = {
++        sourceRowIndex: 0,
++        sourceTitle: '旧总结',
++        sourceNote: '',
++        sourceContent: '张三重伤昏迷。',
++    };
++
++    const nextUnits = normalizeStructuredUnits([
++        {
++            type: 'character',
++            title: '张三重伤昏迷',
++            summary: '张三重伤昏迷。',
++            names: ['张三'],
++            place: '',
++            time: '',
++            keywords: ['张三', '重伤'],
++        },
++    ], rowContext);
++
++    const snapshot = reconcileStructuredBook({
++        name: '旧书',
++        createTime: 10,
++        chunks: ['旧格式内容'],
++        vectors: [[0.9]],
++        vectorized: [true],
++    }, nextUnits, {
++        fallbackName: '《剧情总结归档》',
++        createTime: 20,
++    });
++
++    assert.equal(snapshot.reusedCount, 0);
++    assert.equal(snapshot.vectorized[0], false);
++    assert.equal(snapshot.vectors[0], null);
++    assert.equal(snapshot.name, '旧书');
++});
+diff --git a/vector_manager.js b/vector_manager.js
+index 6669e75..328fa28 100644
+--- a/vector_manager.js
++++ b/vector_manager.js
+@@ -18,7 +18,7 @@
+     class VectorManager {
+         constructor() {
+             // 📚 图书馆结构（替代旧版 customKnowledge）
+-            // 格式: { "book_uuid": { name, chunks, vectors, createTime } }
++            // 格式: { "book_uuid": { name, chunks, vectors, vectorized, metas, createTime } }
+             this.library = {};
+ 
+             // 文本向量缓存（避免重复计算）
+@@ -33,6 +33,9 @@
+             // 🔒 安全锁：防止数据未加载时误保存
+             this.isDataLoaded = false;
+ 
++            // 结构化抽取缓存：key = 总结行签名，value = 结构化单元数组
++            this.structuredRowCache = new Map();
++
+             console.log('✅ [VectorManager] 初始化完成 (图书馆架构 + 世界书存储)');
+ 
+             // 加载图书馆数据（内含数据迁移逻辑）
+@@ -64,7 +67,8 @@
+                         chunks: oldData.map(item => item.content || ''),
+                         vectors: oldData.map(item => item.vector || null),
+                         createTime: Date.now(),
+-                        vectorized: oldData.map(item => item.vectorized || false)
++                        vectorized: oldData.map(item => item.vectorized || false),
++                        metas: new Array(oldData.length).fill(null),
+                     };
+ 
+                     console.log(`✅ [数据迁移] 已将 ${oldData.length} 条旧数据迁移到"默认知识库"`);
+@@ -257,6 +261,7 @@
+                 if (explicitData && typeof explicitData === 'object') {
+                     console.log('🔄 [VectorManager] 合并外部传入的数据...');
+                     Object.assign(this.library, explicitData); // 温和合并,不覆盖
++                    this._normalizeLibrary();
+                     this.isDataLoaded = true; // ✅ 解锁
+                     return;
+                 }
+@@ -302,6 +307,7 @@
+                         if (bookData && bookData.entries && bookData.entries["0"] && bookData.entries["0"].content) {
+                             try {
+                                 this.library = JSON.parse(bookData.entries["0"].content);
++                                this._normalizeLibrary();
+                                 console.log(`📂 [VectorManager] 已从世界书加载: ${Object.keys(this.library).length} 本书`);
+                                 loadedFromWorldInfo = true;
+                             } catch (parseError) {
+@@ -323,6 +329,7 @@
+                     if (settings.vectorLibrary && typeof settings.vectorLibrary === 'object' && Object.keys(settings.vectorLibrary).length > 0) {
+                         console.log('🔄 [数据迁移] 检测到旧配置中的数据，开始迁移到世界书...');
+                         this.library = settings.vectorLibrary;
++                        this._normalizeLibrary();
+                         console.log(`📂 [VectorManager] 已加载旧配置数据: ${Object.keys(this.library).length} 本书`);
+ 
+                         // 标记为已加载，允许保存
+@@ -337,6 +344,7 @@
+                     } else {
+                         // 完全没有数据，初始化为空
+                         this.library = {};
++                        this._normalizeLibrary();
+                         console.log('📂 [VectorManager] 图书馆为空 (无数据)');
+                     }
+                 }
+@@ -351,6 +359,56 @@
+             }
+         }
+ 
++        /**
++         * 🧹 规范化书籍结构，补齐 metas 等缺省字段
++         * @param {Object} book 原始书籍对象
++         * @returns {Object}
++         * @private
++         */
++        _normalizeBookShape(book) {
++            if (!book || typeof book !== 'object') {
++                return {
++                    name: '未命名知识库',
++                    chunks: [],
++                    vectors: [],
++                    vectorized: [],
++                    metas: [],
++                    createTime: Date.now(),
++                };
++            }
++
++            const chunks = Array.isArray(book.chunks) ? book.chunks : [];
++            const vectors = Array.isArray(book.vectors) ? book.vectors : new Array(chunks.length).fill(null);
++            const vectorized = Array.isArray(book.vectorized) ? book.vectorized : new Array(chunks.length).fill(false);
++            const metas = Array.isArray(book.metas) ? book.metas : new Array(chunks.length).fill(null);
++
++            while (vectors.length < chunks.length) vectors.push(null);
++            while (vectorized.length < chunks.length) vectorized.push(false);
++            while (metas.length < chunks.length) metas.push(null);
++
++            return {
++                ...book,
++                name: book.name || '未命名知识库',
++                chunks,
++                vectors,
++                vectorized,
++                metas,
++                createTime: book.createTime || Date.now(),
++            };
++        }
++
++        /**
++         * 🧹 规范化整个图书馆结构
++         * @private
++         */
++        _normalizeLibrary() {
++            const normalized = {};
++            Object.entries(this.library || {}).forEach(([bookId, book]) => {
++                normalized[bookId] = this._normalizeBookShape(book);
++            });
++            this.library = normalized;
++        }
++
+         /**
+          * 📖 获取当前会话绑定的书籍 ID 列表
+          * @returns {string[]} - 书籍 ID 数组
+@@ -445,6 +503,16 @@
+             return hash.toString(36);
+         }
+ 
++        /**
++         * 🧼 清洗字符串
++         * @param {any} value 原始值
++         * @returns {string}
++         * @private
++         */
++        _cleanString(value) {
++            return String(value == null ? '' : value).replace(/\r\n/g, '\n').trim();
++        }
++
+         /**
+          * 🔄 替换文本中的占位符变量
+          * @param {string} text - 要处理的文本
+@@ -482,6 +550,177 @@
+             }
+         }
+ 
++        /**
++         * 🔧 获取结构化记忆工具模块
++         * @returns {Object}
++         * @private
++         */
++        _getStructuredMemoryTools() {
++            const tools = window.Gaigai?.StructuredMemory;
++            if (!tools) {
++                throw new Error('StructuredMemory 模块未加载');
++            }
++            return tools;
++        }
++
++        /**
++         * 🧾 获取结构化抽取提示词
++         * @returns {string}
++         * @private
++         */
++        _getStructuredPrompt() {
++            return window.Gaigai?.PromptManager?.get?.('structuredMemoryPrompt')
++                || window.Gaigai?.PromptManager?.DEFAULT_STRUCTURED_MEMORY_PROMPT
++                || '';
++        }
++
++        /**
++         * 🧱 构造单条总结的结构化抽取消息
++         * @param {Object} rowContext 总结行上下文
++         * @returns {Array}
++         * @private
++         */
++        _buildStructuredMessages(rowContext) {
++            const prompt = this._getStructuredPrompt();
++            if (!prompt) {
++                throw new Error('未配置结构化记忆抽取提示词');
++            }
++
++            const payload = {
++                sourceRowIndex: rowContext.sourceRowIndex,
++                title: rowContext.sourceTitle,
++                note: rowContext.sourceNote,
++                content: rowContext.sourceContent,
++            };
++
++            return [
++                { role: 'system', content: prompt },
++                {
++                    role: 'user',
++                    content: [
++                        '请把下面这条总结拆成结构化记忆 JSON 数组。',
++                        JSON.stringify(payload, null, 2),
++                    ].join('\n\n'),
++                },
++            ];
++        }
++
++        /**
++         * 🤖 调用现有 API 链路执行结构化抽取
++         * @param {Object} rowContext 总结行上下文
++         * @returns {Promise<Array<{meta:Object,text:string}>>}
++         * @private
++         */
++        async _extractStructuredUnitsFromRow(rowContext) {
++            const structuredTools = this._getStructuredMemoryTools();
++            const rowHash = structuredTools.hashSummaryRow(rowContext);
++            if (this.structuredRowCache.has(rowHash)) {
++                return structuredTools.normalizeStructuredUnits(
++                    this.structuredRowCache.get(rowHash),
++                    rowContext
++                );
++            }
++
++            const messages = this._buildStructuredMessages(rowContext);
++            const apiFunc = window.Gaigai?.config?.useIndependentAPI
++                ? window.Gaigai?.tools?.callIndependentAPI
++                : window.Gaigai?.tools?.callTavernAPI;
++
++            if (typeof apiFunc !== 'function') {
++                throw new Error('结构化抽取 API 不可用');
++            }
++
++            const result = await apiFunc(messages);
++            if (!result?.success || !result.summary) {
++                throw new Error(result?.error || '结构化抽取返回为空');
++            }
++
++            const parsedUnits = structuredTools.parseStructuredResponse(result.summary);
++            this.structuredRowCache.set(rowHash, parsedUnits);
++            const normalizedUnits = structuredTools.normalizeStructuredUnits(parsedUnits, rowContext);
++            if (normalizedUnits.length === 0) {
++                throw new Error(`总结行 #${rowContext.sourceRowIndex} 未抽取到有效结构化事实`);
++            }
++
++            return normalizedUnits;
++        }
++
++        /**
++         * 🧾 从总结表构造所有结构化单元
++         * @param {Object} summarySheet 总结表
++         * @returns {Promise<Array<{meta:Object,text:string}>>}
++         * @private
++         */
++        async _buildStructuredSummarySnapshot(summarySheet, rowIndices = null) {
++            const allUnits = [];
++            const successfulRowIndices = [];
++            const failedRows = [];
++            const rowUnitsMap = {};
++            const targetRows = Array.isArray(rowIndices) ? rowIndices : summarySheet.r.map((_, index) => index);
++
++            for (const rowIndex of targetRows) {
++                const row = summarySheet.r[rowIndex];
++                if (!row) {
++                    continue;
++                }
++                const rowData = Array.isArray(row) ? row : Object.values(row);
++                const title = this._resolvePlaceholders(rowData[0] || '');
++                const content = this._resolvePlaceholders(rowData[1] || '');
++                const note = this._resolvePlaceholders(rowData[2] || '');
++
++                if (!this._cleanString(content)) {
++                    continue;
++                }
++
++                const rowContext = {
++                    sourceRowIndex: rowIndex,
++                    sourceTitle: title,
++                    sourceNote: note,
++                    sourceContent: content,
++                };
++
++                try {
++                    const units = await this._extractStructuredUnitsFromRow(rowContext);
++                    allUnits.push(...units);
++                    successfulRowIndices.push(rowIndex);
++                    rowUnitsMap[rowIndex] = units;
++                } catch (error) {
++                    console.warn(`⚠️ [VectorManager] 总结行 #${rowIndex} 结构化抽取失败: ${error.message}`);
++                    failedRows.push({
++                        rowIndex,
++                        title,
++                        error: error.message,
++                    });
++                }
++            }
++
++            return {
++                units: allUnits,
++                successfulRowIndices,
++                failedRows,
++                rowUnitsMap,
++            };
++        }
++
++        /**
++         * 📚 从当前总结表构造结构化快照
++         * @param {Object} options 选项
++         * @returns {Promise<Object>}
++         */
++        async buildStructuredSummarySnapshot(options = {}) {
++            const m = window.Gaigai?.m;
++            if (!m || !m.s || m.s.length === 0) {
++                throw new Error('Memory Manager 不可用');
++            }
++
++            const summarySheet = m.s[m.s.length - 1];
++            if (!summarySheet || !summarySheet.r) {
++                throw new Error('总结表无效');
++            }
++
++            return this._buildStructuredSummarySnapshot(summarySheet, options.rowIndices || null);
++        }
++
+         /**
+          * 🌐 调用 Embedding API 获取向量
+          * @param {string} text - 要编码的文本
+@@ -784,6 +1023,7 @@
+                     chunks: chunks.map(chunk => chunk.trim()),
+                     vectors: new Array(chunks.length).fill(null),
+                     vectorized: new Array(chunks.length).fill(false),
++                    metas: new Array(chunks.length).fill(null),
+                     createTime: Date.now()
+                 };
+ 
+@@ -956,37 +1196,55 @@
+ 
+                 // 检索绑定的知识库
+                 for (const bookId of allowedBookIds) {
+-                    const book = this.library[bookId];
++                    const book = this._normalizeBookShape(this.library[bookId]);
+                     if (!book) continue;
+ 
+                     for (let i = 0; i < book.chunks.length; i++) {
+                         if (book.vectorized[i] && book.vectors[i]) {
+                             // 计算基础向量相似度
+                             const score = this.cosineSimilarity(queryVector, book.vectors[i]);
++                            const meta = book.metas[i] || null;
+ 
+                             let finalScore = score;
+                             let isKeywordHit = false;
+                             let hitReason = '';
+ 
+-                            // 🔍 增强版实体提取正则：支持 姓名/地点/物品/组织/设定
+-                            // 匹配格式如： "姓名：张三"、"地点: 洛阳"、"Item: Excalibur"
+-                            const entityRegex = /(?:姓名|名字|角色|Name|地点|位置|场景|Location|Place|物品|道具|装备|Item|Object|组织|势力|帮派|Organization|Group|设定|概念|Concept)[:：]\s*([^\s\n，,。.;；]+)/ig;
+-
+-                            // 遍历所有可能的匹配项 (因为一个片段可能包含多个定义)
+-                            let match;
+-                            while ((match = entityRegex.exec(book.chunks[i])) !== null) {
+-                                if (match[1]) {
+-                                    const entityName = match[1].trim();
+-                                    // 只有当实体名长度大于1时才匹配（避免匹配到 "我"、"他" 这种单字）
+-                                    if (entityName.length > 1 && query.includes(entityName)) {
++                            if (meta) {
++                                const metaCandidates = [
++                                    meta.primaryName,
++                                    meta.relationshipTarget,
++                                    meta.place,
++                                    meta.title,
++                                    ...(Array.isArray(meta.names) ? meta.names : []),
++                                    ...(Array.isArray(meta.keywords) ? meta.keywords : []),
++                                ]
++                                    .map(value => this._cleanString(value))
++                                    .filter(value => value.length > 1);
++
++                                for (const candidate of metaCandidates) {
++                                    if (query.includes(candidate)) {
+                                         isKeywordHit = true;
+-                                        hitReason = entityName;
+-                                        break; // 只要命中一个关键词，就足够召回了
++                                        hitReason = candidate;
++                                        break;
++                                    }
++                                }
++                            } else {
++                                // 兼容旧书：回退到文本正则抽取
++                                const entityRegex = /(?:姓名|名字|角色|Name|地点|位置|场景|Location|Place|物品|道具|装备|Item|Object|组织|势力|帮派|Organization|Group|设定|概念|Concept|事件|关系)[:：]\s*([^\s\n，,。.;；]+)/ig;
++                                let match;
++                                while ((match = entityRegex.exec(book.chunks[i])) !== null) {
++                                    if (match[1]) {
++                                        const entityName = match[1].trim();
++                                        if (entityName.length > 1 && query.includes(entityName)) {
++                                            isKeywordHit = true;
++                                            hitReason = entityName;
++                                            break;
++                                        }
+                                     }
+                                 }
+                             }
+ 
+-                            // 策略 2: 短查询词兜底 (如果查询很短且片段包含查询词，也强制召回)
++                            // 策略 2: 短查询词兜底
+                             if (!isKeywordHit && query.length < 15 && book.chunks[i].includes(query)) {
+                                 isKeywordHit = true;
+                                 hitReason = '短语精确匹配';
+@@ -1001,14 +1259,19 @@
+ 
+                             // ✅ 修复：内容去重
+                             // 只有当这个文本片段没出现过时，才加入结果
+-                            if (!seenContent.has(book.chunks[i])) {
+-                                seenContent.add(book.chunks[i]); // 记录已添加的内容
++                            const dedupeKey = meta
++                                ? `${meta.type || 'legacy'}|${meta.primaryName || meta.title || ''}|${meta.sourceRowIndex ?? i}`
++                                : book.chunks[i];
++
++                            if (!seenContent.has(dedupeKey)) {
++                                seenContent.add(dedupeKey);
+ 
+                                 results.push({
+                                     text: book.chunks[i],
+                                     source: `${book.name} 片段${i}`,
+                                     score: finalScore,
+-                                    type: isKeywordHit ? '关键词⭐' : '知识库'
++                                    type: isKeywordHit ? '关键词⭐' : '知识库',
++                                    meta,
+                                 });
+                             }
+                         }
+@@ -1101,80 +1364,35 @@
+             try {
+                 const m = window.Gaigai?.m;
+                 if (!m || !m.s || m.s.length === 0) throw new Error('Memory Manager 不可用');
++                const structuredTools = this._getStructuredMemoryTools();
+ 
++                // 1. 构建新的结构化单元
+                 const summarySheet = m.s[m.s.length - 1];
+                 if (!summarySheet || !summarySheet.r) throw new Error('总结表无效');
+ 
+-                // 1. 构建新的 chunks
+-                const newChunks = [];
+-                for (const row of summarySheet.r) {
+-                    const rowData = Array.isArray(row) ? row : Object.values(row);
+-                    const title = rowData[0] || '';
+-                    const content = rowData[1] || '';
+-                    const remark = rowData[2] || '';
+-
+-                    let chunkText = '';
+-                    if (title) chunkText += title + (remark ? ` (${remark})` : '') + '\n';
+-                    if (content) chunkText += content;
+-
+-                    chunkText = this._resolvePlaceholders(chunkText);
+-                    if (chunkText.trim()) newChunks.push(chunkText.trim());
++                const snapshot = await this._buildStructuredSummarySnapshot(summarySheet);
++                const normalizedUnits = snapshot.units;
++                if (normalizedUnits.length === 0) {
++                    const firstError = snapshot.failedRows[0]?.error || '总结表内容无法抽取为结构化记忆';
++                    throw new Error(firstError);
+                 }
+ 
+-                if (newChunks.length === 0) throw new Error('总结表内容为空');
+-
+                 // 2. 准备 ID 和 旧数据
+                 const sessionId = m.gid() || 'default';
+                 const bookId = 'summary_book_' + sessionId;
+                 const defaultBookName = '《剧情总结归档》';
++                const existingBook = this._normalizeBookShape(this.library[bookId]);
+ 
+-                let existingVectorsMap = new Map(); // Map<Text, Vector>
+-                let existingName = defaultBookName;
+-                let existingCreateTime = Date.now();
+-
+-                // 3. 【核心修复】建立旧数据缓存索引
+-                if (this.library[bookId]) {
+-                    const oldBook = this.library[bookId];
+-                    existingName = oldBook.name;
+-                    existingCreateTime = oldBook.createTime;
+-
+-                    // 将旧的 文本->向量 存入 Map
+-                    oldBook.chunks.forEach((text, idx) => {
+-                        if (oldBook.vectorized[idx] && oldBook.vectors[idx]) {
+-                            existingVectorsMap.set(text, oldBook.vectors[idx]);
+-                        }
+-                    });
+-                    console.log(`♻️ [缓存复用] 已索引 ${existingVectorsMap.size} 条旧向量`);
+-                }
+-
+-                // 4. 构建新书籍数据 (尝试继承向量)
+-                const newVectors = [];
+-                const newVectorized = [];
+-                let reusedCount = 0;
+-
+-                newChunks.forEach(text => {
+-                    if (existingVectorsMap.has(text)) {
+-                        // ✅ 命中缓存：内容没变，直接复用旧向量
+-                        newVectors.push(existingVectorsMap.get(text));
+-                        newVectorized.push(true);
+-                        reusedCount++;
+-                    } else {
+-                        // ❌ 内容变了或新内容：重置为空，等待重新向量化
+-                        newVectors.push(null);
+-                        newVectorized.push(false);
+-                    }
++                // 3. 根据 unitHash 复用旧向量
++                const nextBook = structuredTools.reconcileStructuredBook(existingBook, normalizedUnits, {
++                    fallbackName: defaultBookName,
++                    createTime: Date.now(),
+                 });
+ 
+-                // 5. 更新书架
+-                this.library[bookId] = {
+-                    name: existingName,
+-                    chunks: newChunks,
+-                    vectors: newVectors,     // 使用混合了旧数据的新数组
+-                    vectorized: newVectorized, // 状态同步
+-                    createTime: existingCreateTime
+-                };
++                // 4. 更新书架
++                this.library[bookId] = nextBook;
+ 
+-                console.log(`📝 [增量同步] 书籍已更新。复用旧向量: ${reusedCount} 条, 待计算: ${newChunks.length - reusedCount} 条`);
++                console.log(`📝 [增量同步] 书籍已更新。复用旧向量: ${nextBook.reusedCount} 条, 待计算: ${nextBook.chunks.length - nextBook.reusedCount} 条`);
+ 
+                 this.saveLibrary();
+ 
+@@ -1189,17 +1407,32 @@
+ 
+                 // ⚡ 仅当有未向量化的内容时，才触发 API
+                 if (autoVectorize) {
+-                    const needsUpdate = newVectorized.includes(false);
++                    const needsUpdate = nextBook.vectorized.includes(false);
+                     if (needsUpdate) {
+                         console.log('⚡ [VectorManager] 检测到新内容，开始增量向量化...');
+                         const vectorizeResult = await this.vectorizeBook(bookId);
+-                        return { success: true, count: newChunks.length, vectorized: true, vectorizeResult };
++                        return {
++                            success: true,
++                            count: nextBook.chunks.length,
++                            bookId,
++                            vectorized: true,
++                            vectorizeResult,
++                            successfulRowIndices: snapshot.successfulRowIndices,
++                            failedRows: snapshot.failedRows,
++                        };
+                     } else {
+                         console.log('✅ [VectorManager] 所有内容命中缓存，无需调用 API');
+                     }
+                 }
+ 
+-                return { success: true, count: newChunks.length, bookId, vectorized: false };
++                return {
++                    success: true,
++                    count: nextBook.chunks.length,
++                    bookId,
++                    vectorized: false,
++                    successfulRowIndices: snapshot.successfulRowIndices,
++                    failedRows: snapshot.failedRows,
++                };
+ 
+             } catch (error) {
+                 console.error('❌ [VectorManager] 同步失败:', error);
+@@ -1278,21 +1511,26 @@
+ 
+             // 导出图书馆（仅导出指定的书籍）
+             lines.push('>>> 图书馆 <<<');
+-            for (const [bookId, book] of booksToExport) {
++                for (const [bookId, book] of booksToExport) {
++                const safeBook = this._normalizeBookShape(book);
+                 lines.push('=== 书籍信息 ===');
+                 lines.push(`ID: ${bookId}`);
+-                lines.push(`书名: ${book.name}`);
+-                lines.push(`创建时间: ${book.createTime}`);
+-                lines.push(`片段数量: ${book.chunks.length}`);
++                lines.push(`书名: ${safeBook.name}`);
++                lines.push(`创建时间: ${safeBook.createTime}`);
++                lines.push(`片段数量: ${safeBook.chunks.length}`);
+                 lines.push('');
+ 
+                 // 导出每个片段
+-                for (let i = 0; i < book.chunks.length; i++) {
++                for (let i = 0; i < safeBook.chunks.length; i++) {
+                     lines.push(`--- 片段 ${i} ---`);
+-                    lines.push(book.chunks[i]);
+-                    if (book.vectorized[i] && book.vectors[i]) {
++                    lines.push(safeBook.chunks[i]);
++                    if (safeBook.metas[i]) {
++                        lines.push('--- Meta (JSON) ---');
++                        lines.push(JSON.stringify(safeBook.metas[i]));
++                    }
++                    if (safeBook.vectorized[i] && safeBook.vectors[i]) {
+                         lines.push('--- 向量 (Base64) ---');
+-                        const vectorJson = JSON.stringify(book.vectors[i]);
++                        const vectorJson = JSON.stringify(safeBook.vectors[i]);
+                         const vectorBase64 = btoa(unescape(encodeURIComponent(vectorJson)));
+                         lines.push(vectorBase64);
+                     } else {
+@@ -1357,7 +1595,7 @@
+ 
+                             // 开始新书
+                             mode = 'book_meta';
+-                            currentEntry = { chunks: [], vectors: [], vectorized: [] };
++                            currentEntry = { chunks: [], vectors: [], vectorized: [], metas: [] };
+                             currentChunkIndex = -1;
+                             currentBookId = null; // 重置ID
+                             continue;
+@@ -1370,6 +1608,12 @@
+                             continue;
+                         }
+ 
++                        if (line === '--- Meta (JSON) ---') {
++                            mode = 'chunk_meta';
++                            currentEntry.metas[currentChunkIndex] = null;
++                            continue;
++                        }
++
+                         if (line === '--- 向量 (Base64) ---') {
+                             mode = 'chunk_vector';
+                             continue;
+@@ -1395,6 +1639,15 @@
+                             if (line && !line.startsWith('---')) {
+                                 currentEntry.chunks[currentChunkIndex] += (currentEntry.chunks[currentChunkIndex] ? '\n' : '') + line;
+                             }
++                        } else if (mode === 'chunk_meta') {
++                            if (line && !line.startsWith('---') && !line.startsWith('===')) {
++                                try {
++                                    currentEntry.metas[currentChunkIndex] = JSON.parse(line);
++                                } catch (e) {
++                                    console.error('❌ [VectorManager] Meta 解析失败:', e);
++                                    currentEntry.metas[currentChunkIndex] = null;
++                                }
++                            }
+                         } else if (mode === 'chunk_vector') {
+                             if (line && !line.startsWith('---') && !line.startsWith('===')) {
+                                 try {
+@@ -1421,6 +1674,7 @@
+                 // 保留旧书架 (this.library)，将导入的新书 (newLibrary) 合并进去
+                 // 如果ID相同，新导入的会覆盖旧的
+                 Object.assign(this.library, newLibrary);
++                this._normalizeLibrary();
+ 
+                 this.saveLibrary();
+ 
+@@ -1928,13 +2182,22 @@
+                 const statusIcon = isVectorized ? '✅' : '⏳';
+                 const statusText = isVectorized ? '已向量化' : '待处理';
+                 const statusColor = isVectorized ? '#4CAF50' : '#FF9800';
++                const meta = Array.isArray(book.metas) ? book.metas[index] : null;
++                const typeLabelMap = {
++                    character: '人物',
++                    event: '事件',
++                    location: '地点',
++                    item: '物品',
++                    relationship: '关系',
++                };
++                const typeLabel = meta?.type ? (typeLabelMap[meta.type] || meta.type) : '未分类';
+                 const preview = chunk.substring(0, 100) + (chunk.length > 100 ? '...' : '');
+ 
+                 return `
+                     <div class="gg-chunk-item" data-index="${index}" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 8px; margin-bottom: 6px; background: rgba(255,255,255,0.02); cursor: pointer;">
+                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                             <div style="font-size: 10px; color: ${UI.tc}; opacity: 0.7; font-weight: 600;">
+-                                片段 ${index}
++                                片段 ${index} · ${typeLabel}
+                             </div>
+                             <span style="font-size: 10px; color: ${statusColor};">
+                                 ${statusIcon} ${statusText}
+@@ -2751,33 +3014,34 @@
+ 
+                     const result = await self.syncSummaryToBook();
+ 
+-                    if (result.success) {
+-                        if (typeof toastr !== 'undefined') {
+-                            toastr.success(`已同步 ${result.count} 条总结到《剧情总结归档》`, '同步成功');
+-                        } else {
+-                            await customAlert(`✅ 同步成功\n\n已同步 ${result.count} 条总结`, '成功');
++                        if (result.success) {
++                            if (typeof toastr !== 'undefined') {
++                                toastr.success(`已同步 ${result.count} 条总结到《剧情总结归档》`, '同步成功');
++                            } else {
++                                await customAlert(`✅ 同步成功\n\n已同步 ${result.count} 条总结`, '成功');
+                         }
+ 
+                         // 自动选中新创建/更新的书籍
+                         self.selectedBookId = result.bookId;
+                         self.showUI();
+ 
+-                        // ✅ 新增：手动同步成功后，自动隐藏总结表的所有内容
++                        // ✅ 新增：手动同步成功后，仅隐藏结构化成功的总结行
+                         const sumIdx = m.s.length - 1; // 总结表索引
+-                        const sumSheet = m.get(sumIdx);
+-                        if (sumSheet && sumSheet.r.length > 0) {
+-                            // 遍历所有行进行隐藏标记
+-                            for (let ri = 0; ri < sumSheet.r.length; ri++) {
++                        if (Array.isArray(result.successfulRowIndices)) {
++                            for (const ri of result.successfulRowIndices) {
+                                 window.Gaigai.markAsSummarized(sumIdx, ri);
+                             }
+                             m.save(false, true); // 保存隐藏状态
+-                            console.log('⚡[手动同步向量化] 已自动隐藏总结表所有行');
++                            console.log('⚡[手动同步向量化] 已自动隐藏结构化成功的总结行');
+ 
+                             // 如果记忆表格主界面正开着，刷新它以显示绿色隐藏状态
+                             if ($('#gai-main-pop').length > 0 && typeof window.Gaigai.shw === 'function') {
+                                 window.Gaigai.shw();
+                             }
+                         }
++                        if (Array.isArray(result.failedRows) && result.failedRows.length > 0) {
++                            console.warn('⚠️ [手动同步向量化] 以下总结行结构化失败，保持可见:', result.failedRows);
++                        }
+                     } else {
+                         throw new Error(result.error || '同步失败');
+                     }
+@@ -2809,6 +3073,7 @@
+                         chunks: [],
+                         vectors: [],
+                         vectorized: [],
++                        metas: [],
+                         createTime: Date.now()
+                     };
+ 
+@@ -3135,6 +3400,7 @@
+                     book.chunks = newChunks.map(chunk => chunk.trim());
+                     book.vectors = new Array(newChunks.length).fill(null);
+                     book.vectorized = new Array(newChunks.length).fill(false);
++                    book.metas = new Array(newChunks.length).fill(null);
+ 
+                     // 保存到全局
+                     self.saveLibrary();
+diff --git a/world_info.js b/world_info.js
+index 018e9eb..4a8d51a 100644
+--- a/world_info.js
++++ b/world_info.js
+@@ -22,6 +22,47 @@
+             console.log('✅ [WorldInfoManager] 初始化完成');
+         }
+ 
++        /**
++         * 🔧 获取结构化记忆工具模块
++         * @returns {Object}
++         * @private
++         */
++        _getStructuredMemoryTools() {
++            const tools = window.Gaigai?.StructuredMemory;
++            if (!tools) {
++                throw new Error('StructuredMemory 模块未加载');
++            }
++            return tools;
++        }
++
++        /**
++         * 🔧 构造结构化世界书条目
++         * @param {Array<{meta:Object,text:string}>} units 结构化单元
++         * @param {number} startUid 起始 UID
++         * @returns {Object}
++         * @private
++         */
++        _buildStructuredEntries(units, startUid = 0) {
++            const tools = this._getStructuredMemoryTools();
++            return tools.buildWorldInfoEntries(units, startUid, {
++                vectorized: window.Gaigai.config_obj.worldInfoVectorized ?? true,
++            });
++        }
++
++        /**
++         * 🔍 获取当前总结表的结构化快照
++         * @param {Object} options 选项
++         * @returns {Promise<Object>}
++         * @private
++         */
++        async _getStructuredSummarySnapshot(options = {}) {
++            if (!window.Gaigai?.VM || typeof window.Gaigai.VM.buildStructuredSummarySnapshot !== 'function') {
++                throw new Error('VectorManager 结构化快照接口不可用');
++            }
++
++            return await window.Gaigai.VM.buildStructuredSummarySnapshot(options);
++        }
++
+         /**
+          * 🧼 [辅助方法] 获取稳定的世界书名称 (去除 Branch 后缀)
+          * 目的：让主线和所有分支共用同一个世界书文件，防止文件爆炸
+@@ -75,22 +116,14 @@
+                         console.log('✅ [智能同步] 内存数据已更新');
+                     }
+ 
+-                    // 2.2 调用API保存到硬盘
+-                    const finalJson = { entries: importEntries, name: worldBookName };
+-                    const saveRes = await fetch('/api/worldinfo/edit', {
+-                        method: 'POST',
+-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+-                        body: JSON.stringify({ name: worldBookName, data: finalJson }),
+-                        credentials: 'include'
+-                    });
+-
+-                    if (saveRes.ok) {
+-                        console.log('💾 [智能同步] 硬盘保存成功 (API模式)');
+-                        return { mode: 'update', success: true };
+-                    } else {
+-                        throw new Error(`API保存失败: ${saveRes.status}`);
++                    // 2.2 优先使用原生 saveWorldInfo 触发运行态刷新
++                    const nativeSaved = await this._saveWorldInfoBook(worldBookName, importEntries, csrfToken);
++                    if (!nativeSaved) {
++                        throw new Error('世界书保存失败');
+                     }
+ 
++                    return { mode: 'update', success: true };
++
+                 } else {
+                     // ==================== 创建模式：模拟文件上传 ====================
+                     console.log('📤 [智能同步] 使用【上传模式】- 首次创建，触发UI刷新');
+@@ -118,6 +151,44 @@
+             }
+         }
+ 
++        /**
++         * 💾 保存世界书并尽量触发运行态刷新
++         * @param {string} worldBookName 世界书名
++         * @param {Object} importEntries 条目对象
++         * @param {string} csrfToken CSRF 令牌
++         * @returns {Promise<boolean>}
++         * @private
++         */
++        async _saveWorldInfoBook(worldBookName, importEntries, csrfToken) {
++            try {
++                const ctx = typeof SillyTavern !== 'undefined' && typeof SillyTavern.getContext === 'function'
++                    ? SillyTavern.getContext()
++                    : null;
++                if (ctx && typeof ctx.saveWorldInfo === 'function') {
++                    await ctx.saveWorldInfo(worldBookName, { entries: importEntries, name: worldBookName }, true);
++                    console.log('💾 [智能同步] 原生 saveWorldInfo 保存成功');
++                    return true;
++                }
++            } catch (error) {
++                console.warn('⚠️ [智能同步] 原生 saveWorldInfo 保存失败，回退到 API:', error);
++            }
++
++            const finalJson = { entries: importEntries, name: worldBookName };
++            const saveRes = await fetch('/api/worldinfo/edit', {
++                method: 'POST',
++                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
++                body: JSON.stringify({ name: worldBookName, data: finalJson }),
++                credentials: 'include'
++            });
++
++            if (!saveRes.ok) {
++                throw new Error(`API保存失败: ${saveRes.status}`);
++            }
++
++            console.log('💾 [智能同步] 硬盘保存成功 (API模式)');
++            return true;
++        }
++
+         /**
+          * 🌐 同步总结到世界书 (V7.0 追加/覆盖双模式版)
+          * 特点：防抖(5s) -> 强制等待(3s) -> 智能检测是否已存在 -> 选择同步策略
+@@ -187,46 +258,17 @@
+                     return;
+                 }
+ 
+-                console.log(`⚡ [世界书同步-覆盖] 开始打包 ${summarySheet.r.length} 条数据...`);
++                console.log(`⚡ [世界书同步-覆盖] 开始结构化打包 ${summarySheet.r.length} 条总结...`);
+ 
+                 // --- 准备数据 ---
+                 const worldBookName = this._getStableBookName(m.gid());
+-                const uniqueId = m.gid() || "Unknown_Chat";
+-                const safeName = uniqueId.replace(/[\\/:*?"<>|]/g, "_");
+-                const importEntries = {};
+-                let maxUid = -1;
+-
+-                // 构建全量数据
+-                summarySheet.r.forEach((row, index) => {
+-                    const uid = index;
+-                    maxUid = uid;
+-                    const title = row[0] || '无标题';
+-                    const rowContent = row[1] || '';
+-                    const note = (row[2] && row[2].trim()) ? row[2].trim() : '';
+-
+-                    // ✅ 智能引用表格备注作为前缀
+-                    let displayTitle = title;
+-                    if (note) {
+-                        displayTitle = `【${note}】 ${title}`;
+-                    }
++                const snapshot = await this._getStructuredSummarySnapshot();
++                if (!snapshot.units || snapshot.units.length === 0) {
++                    throw new Error(snapshot.failedRows?.[0]?.error || '世界书同步未获得结构化条目');
++                }
+ 
+-                    importEntries[uid] = {
+-                        uid: uid,
+-                        key: ["总结", "summary", "前情提要", "memory", "记忆"],
+-                        keysecondary: [],
+-                        comment: displayTitle,
+-                        content: `【${title}${note ? ' [' + note + ']' : ''}】\n${rowContent}`,
+-                        constant: false,
+-                        vectorized: window.Gaigai.config_obj.worldInfoVectorized ?? true,
+-                        enabled: true,
+-                        position: 1,
+-                        order: 100,
+-                        extensions: { position: 1, exclude_recursion: false, display_index: 0, probability: 100, useProbability: true }
+-                    };
+-                });
+-
+-                // 🔥 关键修复：上传文件只需要 entries，不需要 name 包装（根据V10测试结果）
+-                const finalJson = { entries: importEntries };
++                const importEntries = this._buildStructuredEntries(snapshot.units, 0);
++                const maxUid = Math.max(-1, ...Object.keys(importEntries).map(key => parseInt(key, 10)).filter(uid => !isNaN(uid)));
+ 
+                 // 获取 CSRF
+                 let csrfToken = '';
+@@ -370,8 +412,6 @@
+             try {
+                 // --- 准备基础数据 ---
+                 const worldBookName = this._getStableBookName(m.gid());
+-                const uniqueId = m.gid() || "Unknown_Chat";
+-                const safeName = uniqueId.replace(/[\\/:*?"<>|]/g, "_");
+ 
+                 // 获取 CSRF
+                 let csrfToken = '';
+@@ -438,43 +478,24 @@
+                     throw e;
+                 }
+ 
+-                // --- 2. 构建新条目 ---
+-                const newUid = maxExistingUid + 1;
+-
+-                // ✅ 从总结表获取最新的标题和备注
+-                let displayTitle = `[追加于 ${new Date().toLocaleString()}]`; // Default fallback
++                // --- 2. 构建本次新增总结对应的结构化条目 ---
+                 const summarySheet = m.get(m.s.length - 1);
++                const lastRowIndex = summarySheet && summarySheet.r.length > 0 ? summarySheet.r.length - 1 : -1;
++                if (lastRowIndex < 0) {
++                    throw new Error('总结表为空，无法执行结构化追加同步');
++                }
+ 
+-                if (summarySheet && summarySheet.r.length > 0) {
+-                    // 我们同步的内容对应刚刚保存的最后一行
+-                    const lastRow = summarySheet.r[summarySheet.r.length - 1];
+-                    const rowTitle = lastRow[0] || '剧情总结';
+-                    const rowNote = (lastRow[2] && lastRow[2].trim()) ? lastRow[2].trim() : '';
+-
+-                    if (rowNote) {
+-                        displayTitle = `【${rowNote}】 ${rowTitle}`;
+-                    } else {
+-                        displayTitle = rowTitle;
+-                    }
++                const snapshot = await this._getStructuredSummarySnapshot({ rowIndices: [lastRowIndex] });
++                if (!snapshot.units || snapshot.units.length === 0) {
++                    throw new Error(snapshot.failedRows?.[0]?.error || '新增总结未抽取到结构化条目');
+                 }
+ 
+-                const newEntry = {
+-                    uid: newUid,
+-                    key: ["总结", "summary", "前情提要", "memory", "记忆"],
+-                    keysecondary: [],
+-                    comment: displayTitle, // ✅ Use the correct title from table
+-                    content: content,
+-                    constant: false,
+-                    vectorized: window.Gaigai.config_obj.worldInfoVectorized ?? true,
+-                    enabled: true,
+-                    position: 1,
+-                    order: 100,
+-                    extensions: { position: 1, exclude_recursion: false, display_index: 0, probability: 100, useProbability: true }
+-                };
++                const newEntries = this._buildStructuredEntries(snapshot.units, maxExistingUid + 1);
+ 
+                 // --- 3. 合并条目 ---
+-                const mergedEntries = { ...existingEntries, [newUid]: newEntry };
+-                console.log(`➕ [世界书同步-追加] 新增条目 UID ${newUid}，总条目数: ${Object.keys(mergedEntries).length}`);
++                const mergedEntries = { ...existingEntries, ...newEntries };
++                const newUidCount = Object.keys(newEntries).length;
++                console.log(`➕ [世界书同步-追加] 新增结构化条目 ${newUidCount} 条，总条目数: ${Object.keys(mergedEntries).length}`);
+ 
+                 // --- 4. 同步到服务器（始终使用智能同步，避免 UI 重复刷新）---
+                 console.log('⚡ [世界书同步-追加] 准备同步到服务器...');
+@@ -482,7 +503,7 @@
+ 
+                 // 更新缓存
+                 this.globalWorldInfoEntriesCache = mergedEntries;
+-                this.globalLastWorldInfoUid = newUid;
++                this.globalLastWorldInfoUid = Math.max(maxExistingUid, ...Object.keys(newEntries).map(key => parseInt(key, 10)).filter(uid => !isNaN(uid)));
+ 
+                 // 🛑 等待 ST 处理 (只有首次创建需要等待UI刷新)
+                 if (syncResult.mode === 'create') {

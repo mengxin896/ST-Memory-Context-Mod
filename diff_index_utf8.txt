@@ -1,0 +1,146 @@
+﻿diff --git a/index.js b/index.js
+index c572fc1..c288772 100644
+--- a/index.js
++++ b/index.js
+@@ -12847,61 +12847,78 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
+                                             .done(function () {
+                                                 console.log('✅ [Loader] world_info.js 加载成功');
+ 
+-                                                // 🆕 加载 summary_manager.js
+-                                                const summaryManagerUrl = `${EXTENSION_PATH}/summary_manager.js`;
+-                                                $.getScript(summaryManagerUrl)
++                                                // 🆕 加载 structured_memory.js
++                                                const structuredMemoryUrl = `${EXTENSION_PATH}/structured_memory.js`;
++                                                $.getScript(structuredMemoryUrl)
+                                                     .done(function () {
+-                                                        console.log('✅ [Loader] summary_manager.js 加载成功');
++                                                        console.log('✅ [Loader] structured_memory.js 加载成功');
+ 
+-                                                        // 🆕 加载 vector_manager.js
+-                                                        const vectorManagerUrl = `${EXTENSION_PATH}/vector_manager.js`;
+-                                                        $.getScript(vectorManagerUrl)
++                                                        // 🆕 加载 summary_manager.js
++                                                        const summaryManagerUrl = `${EXTENSION_PATH}/summary_manager.js`;
++                                                        $.getScript(summaryManagerUrl)
+                                                             .done(function () {
+-                                                                console.log('✅ [Loader] vector_manager.js 加载成功');
+-
+-                                                                // ✨ 验证模块是否成功挂载
+-                                                                if (!window.Gaigai.DebugManager) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.DebugManager 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${debugManagerUrl}`);
+-                                                                }
+-                                                                if (!window.Gaigai.IOManager) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.IOManager 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${ioManagerUrl}`);
+-                                                                }
+-                                                                if (!window.Gaigai.SummaryManager) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.SummaryManager 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${summaryManagerUrl}`);
+-                                                                }
+-                                                                if (!window.Gaigai.BackfillManager) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.BackfillManager 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${backfillManagerUrl}`);
+-                                                                }
+-                                                                if (!window.Gaigai.WI) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.WI 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${worldInfoUrl}`);
+-                                                                }
+-                                                                if (!window.Gaigai.VM) {
+-                                                                    console.error('⚠️ [Loader] window.Gaigai.VM 未成功挂载！');
+-                                                                    console.error(`📍 尝试加载的 URL: ${vectorManagerUrl}`);
+-                                                                }
+-
+-                                                                // 📱 加载手机插件适配模块
+-                                                                const phoneAdapterUrl = `${EXTENSION_PATH}/phone-adapter.js`;
+-                                                                $.getScript(phoneAdapterUrl)
++                                                                console.log('✅ [Loader] summary_manager.js 加载成功');
++
++                                                                // 🆕 加载 vector_manager.js
++                                                                const vectorManagerUrl = `${EXTENSION_PATH}/vector_manager.js`;
++                                                                $.getScript(vectorManagerUrl)
+                                                                     .done(function () {
+-                                                                        console.log('✅ [Loader] phone-adapter.js 加载成功');
+-                                                                        // 所有依赖加载完后，再启动主初始化流程
+-                                                                        setTimeout(tryInit, 500);
++                                                                        console.log('✅ [Loader] vector_manager.js 加载成功');
++
++                                                                        // ✨ 验证模块是否成功挂载
++                                                                        if (!window.Gaigai.DebugManager) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.DebugManager 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${debugManagerUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.IOManager) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.IOManager 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${ioManagerUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.SummaryManager) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.SummaryManager 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${summaryManagerUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.BackfillManager) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.BackfillManager 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${backfillManagerUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.WI) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.WI 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${worldInfoUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.StructuredMemory) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.StructuredMemory 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${structuredMemoryUrl}`);
++                                                                        }
++                                                                        if (!window.Gaigai.VM) {
++                                                                            console.error('⚠️ [Loader] window.Gaigai.VM 未成功挂载！');
++                                                                            console.error(`📍 尝试加载的 URL: ${vectorManagerUrl}`);
++                                                                        }
++
++                                                                        // 📱 加载手机插件适配模块
++                                                                        const phoneAdapterUrl = `${EXTENSION_PATH}/phone-adapter.js`;
++                                                                        $.getScript(phoneAdapterUrl)
++                                                                            .done(function () {
++                                                                                console.log('✅ [Loader] phone-adapter.js 加载成功');
++                                                                                // 所有依赖加载完后，再启动主初始化流程
++                                                                                setTimeout(tryInit, 500);
++                                                                            })
++                                                                            .fail(function () {
++                                                                                console.warn('⚠️ [Loader] phone-adapter.js 加载失败（可选模块，继续初始化）');
++                                                                                // 即使加载失败，也继续初始化
++                                                                                setTimeout(tryInit, 500);
++                                                                            });
+                                                                     })
+                                                                     .fail(function () {
+-                                                                        console.warn('⚠️ [Loader] phone-adapter.js 加载失败（可选模块，继续初始化）');
+-                                                                        // 即使加载失败，也继续初始化
++                                                                        console.error('❌ [Loader] vector_manager.js 加载失败！');
++                                                                        console.error(`📍 尝试加载的 URL: ${vectorManagerUrl}`);
++                                                                        // 即使加载失败，也继续初始化（降级模式）
+                                                                         setTimeout(tryInit, 500);
+                                                                     });
+                                                             })
+                                                             .fail(function (jqxhr, settings, exception) {
+-                                                                console.error('❌ [Loader] vector_manager.js 加载失败！');
+-                                                                console.error(`📍 尝试加载的 URL: ${vectorManagerUrl}`);
++                                                                console.error('❌ [Loader] summary_manager.js 加载失败！');
++                                                                console.error(`📍 尝试加载的 URL: ${summaryManagerUrl}`);
+                                                                 console.error(`📍 HTTP 状态码: ${jqxhr.status}`);
+                                                                 console.error(`📍 错误详情:`, exception);
+                                                                 console.error(`💡 提示：请检查文件是否存在，或控制台 Network 面板查看具体错误`);
+@@ -12910,8 +12927,8 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
+                                                             });
+                                                     })
+                                                     .fail(function (jqxhr, settings, exception) {
+-                                                        console.error('❌ [Loader] summary_manager.js 加载失败！');
+-                                                        console.error(`📍 尝试加载的 URL: ${summaryManagerUrl}`);
++                                                        console.error('❌ [Loader] structured_memory.js 加载失败！');
++                                                        console.error(`📍 尝试加载的 URL: ${structuredMemoryUrl}`);
+                                                         console.error(`📍 HTTP 状态码: ${jqxhr.status}`);
+                                                         console.error(`📍 错误详情:`, exception);
+                                                         console.error(`💡 提示：请检查文件是否存在，或控制台 Network 面板查看具体错误`);
+@@ -13252,4 +13269,4 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
+         return 0;
+     }
+ 
+-})();
+\ No newline at end of file
++})();

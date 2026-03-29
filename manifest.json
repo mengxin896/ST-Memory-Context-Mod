@@ -5,7 +5,7 @@
   "version": "2.2.2",
   "description": "全自动记忆表格记录 + 智能隐藏旧楼层",
   "author": "gaigai315",
-  "homepage": "https://github.com/gaigai315/ST-Memory-Context",
+  "homepage": "https://github.com/mengxin896/ST-Memory-Context-Mod",
   "auto_update": true,
   "requires": [],
   "js": "index.js",
