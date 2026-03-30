@@ -1,9 +1,10 @@
 // ========================================================================
-// 记忆表格 v2.2.4
+// 记忆表格 v2.2.5
 // SillyTavern 记忆管理系统 - 提供表格化记忆、自动总结、批量填表等功能
 // ========================================================================
 (function () {
     'use strict';
+    /* global $, window, document, localStorage, SillyTavern, toastr, navigator, fetch */
 
     // ===== 初始化全局对象（必须在最开始，供 prompt_manager.js 使用）=====
     window.Gaigai = window.Gaigai || {};
@@ -15,7 +16,7 @@
     }
     window.GaigaiLoaded = true;
 
-    console.log('🚀 记忆表格 v2.2.4 启动');
+    console.log('🚀 记忆表格 v2.2.5 启动');
 
     // ===== 防止配置被后台同步覆盖的标志 =====
     window.isEditingConfig = false;
@@ -27,7 +28,7 @@
     window.Gaigai.isSwiping = false;
 
     // ==================== 全局常量定义 ====================
-    const V = 'v2.2.4';
+    const V = 'v2.2.5';
     const SK = 'gg_data';              // 数据存储键
     const UK = 'gg_ui';                // UI配置存储键
     const AK = 'gg_api';               // API配置存储键
@@ -1319,7 +1320,8 @@
                 // ✅ 新增：保存当前 API 进度指针到这个角色的存档里
                 meta: {
                     lastSum: API_CONFIG.lastSummaryIndex,
-                    lastBf: API_CONFIG.lastBackfillIndex
+                    lastBf: API_CONFIG.lastBackfillIndex,
+                    lastBigSum: API_CONFIG.lastBigSummaryIndex // ✅ 新增大总结指针独立保存
                 },
                 // ✅ Per-Chat Configuration: Save critical feature toggles for this chat
                 config: {
@@ -1547,6 +1549,7 @@
                 userRowHeights = {};
                 API_CONFIG.lastSummaryIndex = 0;
                 API_CONFIG.lastBackfillIndex = 0;
+                API_CONFIG.lastBigSummaryIndex = 0; // ✅ 切换会话时，大总结指针也重置为0
                 localStorage.setItem(AK, JSON.stringify(API_CONFIG));
 
                 console.log(`🔄 [会话切换] ID: ${id}，已重置所有状态`);
@@ -1717,6 +1720,7 @@
                 if (finalData.meta) {
                     if (finalData.meta.lastSum !== undefined) API_CONFIG.lastSummaryIndex = finalData.meta.lastSum;
                     if (finalData.meta.lastBf !== undefined) API_CONFIG.lastBackfillIndex = finalData.meta.lastBf;
+                    if (finalData.meta.lastBigSum !== undefined) API_CONFIG.lastBigSummaryIndex = finalData.meta.lastBigSum; // ✅ 新增恢复大总结指针
                     localStorage.setItem(AK, JSON.stringify(API_CONFIG));
                 }
 
@@ -6651,7 +6655,9 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                 lastManualEditTime = Date.now();
 
                 // 重置填表进度指针（不重置总结指针）
+                API_CONFIG.lastSummaryIndex = 0;
                 API_CONFIG.lastBackfillIndex = 0;
+                API_CONFIG.lastBigSummaryIndex = 0; // ✅ 切换会话时，大总结指针也重置为0
                 localStorage.setItem(AK, JSON.stringify(API_CONFIG));
 
                 // 同步到云端
@@ -9808,6 +9814,7 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
             if (serverData.api) {
                 const currentSumIdx = API_CONFIG.lastSummaryIndex;
                 const currentBfIdx = API_CONFIG.lastBackfillIndex;
+                const currentBigSumIdx = API_CONFIG.lastBigSummaryIndex; // ✅ 备份大总结指针
                 const currentSumSrc = API_CONFIG.summarySource; // ✅ 新增备份：保护总结来源（会话独立配置）
 
                 Object.assign(API_CONFIG, serverData.api);
@@ -9818,6 +9825,9 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                 }
                 if (currentBfIdx !== undefined && currentBfIdx > (serverData.api.lastBackfillIndex || 0)) {
                     API_CONFIG.lastBackfillIndex = currentBfIdx;
+                }
+                if (currentBigSumIdx !== undefined && currentBigSumIdx > (serverData.api.lastBigSummaryIndex || 0)) {
+                    API_CONFIG.lastBigSummaryIndex = currentBigSumIdx; // ✅ 恢复大总结指针
                 }
 
                 // ✅ 新增恢复：恢复总结来源（防止全局配置覆盖当前会话的独立设置）
@@ -10152,16 +10162,22 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
             : '';
 
         const h = `<div class="g-p" style="display: flex; flex-direction: column; gap: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <h4 style="margin:0; flex-shrink: 0;">⚙️ 插件配置</h4>
-            <label style="font-size:11px; cursor:pointer; color:#ff9800; font-weight:bold; display:flex; align-items:center; gap:4px; white-space: nowrap;">
-                <input type="checkbox" id="gg_c_auto_calc" ${C.autoCalculateParams ? 'checked' : ''} style="transform: scale(1.1);">
-                <span>✨智能计算联动</span>
-            </label>
-        </div>
+        <h4 style="margin: 0 0 10px 0;">⚙️ 插件配置</h4>
 
         ${hibernateBanner}
         <div style="background: rgba(255,255,255,0.15); border-radius: 8px; padding: 10px; border: 1px solid rgba(255,255,255,0.2);">
+            
+            <!-- ✅ 智能计算联动 (采用标准整行排版) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div>
+                    <label style="font-weight: 600; display:block; color: #0d0d0d;">✨ 智能计算联动</label>
+                    <span style="font-size:10px; opacity:0.7;">勾选后，当手动填写隐藏楼层/小总结楼层处时，自动帮助填写其他楼层数值合理化</span>
+                </div>
+                <input type="checkbox" id="gg_c_auto_calc" ${C.autoCalculateParams ? 'checked' : ''} style="transform: scale(1.2);">
+            </div>
+            
+            <hr style="border: 0; border-top: 1px dashed rgba(0,0,0,0.1); margin: 5px 0 8px 0;">
+
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <div>
                     <label style="font-weight: 600; display:block;">💡 实时填表</label>
@@ -10362,12 +10378,14 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
         </div>
 
         <div style="background: rgba(255,255,255,0.15); border-radius: 8px; padding: 10px; border: 1px solid rgba(255,255,255,0.2);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <div style="font-weight: 600; color:var(--g-tc);">🏷️ 标签过滤（串行双重过滤）</div>
-                <button id="gg_btn_ai_extract_tags" style="padding:4px 10px; background:linear-gradient(135deg, #9C27B0 0%, #673AB7 100%); color:#fff; border:none; border-radius:4px; font-size:10px; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2); white-space: nowrap;">🤖 AI 智能诊断提取</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                    <span style="font-weight: 600; color:var(--g-tc);">🏷️ 标签过滤</span>
+                    <i class="fa-solid fa-circle-info" id="gg_filter_info_icon" style="cursor: pointer; margin-left: 2px; color: #17a2b8; font-size: 14px;" title="点击查看过滤规则说明"></i>
+                </div>
+                <button id="gg_btn_ai_extract_tags" style="padding: 4px 8px !important; background: ${UI.c} !important; color: ${UI.tc} !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 4px !important; font-size: 11px !important; font-weight: normal !important; height: auto !important; min-height: 0 !important; line-height: 1.2 !important; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2); white-space: nowrap; margin-left: auto;">🤖 AI 智能诊断</button>
             </div>
-            <div style="font-size:10px; color:var(--g-tc); opacity:0.7; margin-bottom:6px;">过滤逻辑：先去黑后留白，可单选。例: <code style="background:rgba(0,0,0,0.1); padding:2px; color:var(--g-tc);">think</code>。支持方括号，如需过滤 <code style="background:rgba(0,0,0,0.1); padding:2px; color:var(--g-tc);">[xx]标签</code>，请完整填入 <code style="background:rgba(0,0,0,0.1); padding:2px; color:var(--g-tc);">[xx]</code>。过滤注释填入 <code style="background:rgba(0,0,0,0.1); padding:2px; color:var(--g-tc);">!--</code></div>
-
+            
             <div style="margin-bottom: 8px;">
                 <label style="font-size:11px; color:var(--g-tc); font-weight: 500; display: block; margin-bottom: 4px;">🚫 黑名单标签 (去除)</label>
                 <input type="text" id="gg_c_filter_tags" value="${esc(C.filterTags || '')}" placeholder="例: thinking, system" style="width:100%; padding:5px; border:1px solid rgba(0,0,0,0.1); border-radius:4px; font-size:11px; font-family:monospace; color:var(--g-tc);" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
@@ -10382,8 +10400,6 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                     <span class="gg-quick-tag" data-tag="!--" style="background: rgba(0,0,0,0.08); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 10px; font-family: monospace; color:var(--g-tc); transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.15)'" onmouseout="this.style.background='rgba(0,0,0,0.08)'">!--</span>
                     <span id="gg_clear_filter_tags" style="background: rgba(211,47,47,0.1); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 10px; color:#d32f2f; transition: background 0.2s;" onmouseover="this.style.background='rgba(211,47,47,0.2)'" onmouseout="this.style.background='rgba(211,47,47,0.1)'" title="清空">🗑️</span>
                 </div>
-
-                <div style="font-size:9px; color:#d63031; margin-top:2px;">删除这些标签及其内部的所有文字</div>
             </div>
 
             <div>
@@ -10395,7 +10411,6 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                     <span class="gg-quick-tag-white" data-tag="statusbar" style="background: rgba(0,0,0,0.08); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 10px; font-family: monospace; color:var(--g-tc); transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.15)'" onmouseout="this.style.background='rgba(0,0,0,0.08)'">statusbar</span>
                     <span id="gg_clear_filter_tags_white" style="background: rgba(211,47,47,0.1); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 10px; color:#d32f2f; transition: background 0.2s;" onmouseover="this.style.background='rgba(211,47,47,0.2)'" onmouseout="this.style.background='rgba(211,47,47,0.1)'" title="清空">🗑️</span>
                 </div>
-                <div style="font-size:9px; color:#27ae60; margin-top:2px;">仅提取这些标签内的文字（若未找到则保留黑名单处理后的结果）</div>
             </div>
         </div>
 
@@ -10962,7 +10977,7 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
             });
 
             // ✨ 智能计算开关保存
-            $('#gg_c_auto_calc').on('change', function() {
+            $('#gg_c_auto_calc').on('change', function () {
                 C.autoCalculateParams = $(this).is(':checked');
                 m.save(false, true);
             });
@@ -11001,11 +11016,11 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
             }
 
             // ✨ 绑定输入事件
-            $('#gg_c_limit_count').on('input', function() { runSmartCalculation('limit', $(this).val()); });
-            $('#gg_c_auto_floor').on('input', function() { runSmartCalculation('summary', $(this).val()); });
+            $('#gg_c_limit_count').on('input', function () { runSmartCalculation('limit', $(this).val()); });
+            $('#gg_c_auto_floor').on('input', function () { runSmartCalculation('summary', $(this).val()); });
 
             // 🤖 AI 智能诊断提取标签
-            $('#gg_btn_ai_extract_tags').on('click', async function() {
+            $('#gg_btn_ai_extract_tags').on('click', async function () {
                 const $btn = $(this);
                 const oldHtml = $btn.html();
 
@@ -11217,6 +11232,25 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                 setTimeout(() => {
                     $(this).css('background', 'rgba(0,0,0,0.08)');
                 }, 200);
+            });
+
+            // i 图标点击事件 - 显示过滤规则说明
+            $('#gg_filter_info_icon').off('click').on('click', async function () {
+                await window.Gaigai.customAlert(
+                    '🏷️ 标签过滤规则说明\n\n' +
+                    '【过滤逻辑】\n' +
+                    '先去黑后留白，可单选。\n\n' +
+                    '【黑名单 (去除)】\n' +
+                    '删除这些标签及其内部的所有文字。\n' +
+                    '例: think\n\n' +
+                    '【白名单 (仅留)】\n' +
+                    '仅提取这些标签内的文字（若未找到则保留黑名单处理后的结果）。\n' +
+                    '例: content, message\n\n' +
+                    '【特殊格式】\n' +
+                    '• 方括号标签：如需过滤 [xx]标签，请完整填入 [xx]\n' +
+                    '• HTML注释：过滤注释填入 !--',
+                    '过滤规则说明'
+                );
             });
 
             // 清空按钮
@@ -13371,6 +13405,8 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                         <li><strong>新增楼层计算功能：</strong>填表或总结时，可勾选自动计算保证数值的合理化</li>
                         <li><strong>新增AI分析：</strong>对不会填写过滤标签的用户可使用AI进行帮忙分析标签,并一键填写</li>
                         <li><strong>新增过滤标签：</strong>黑白名单过滤标签支持对方括号标签进行清洗。</li>
+                        <li><strong>优化布局：</strong>微调部分css样式布局</li>
+                        <li><strong>修复bug：</strong>修复部分已知bug</li>
                     </ul>
                 </div>
 
