@@ -11783,11 +11783,18 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                         const newMsgCount = currentCount - lastIndex;
                         const vecInterval = C.autoChatVectorizeFloor || 10;
 
-                        if (newMsgCount >= vecInterval) {
-                            console.log(`🤖 [Auto Vectorize] 触发提取与隐藏! 当前:${currentCount}, 间隔:${vecInterval}`);
+                        // 应用延迟逻辑
+                        const vecDelay = C.autoChatVectorizeDelay ? (C.autoChatVectorizeDelayCount || 6) : 0;
+                        const vecThreshold = vecInterval + vecDelay;
+
+                        if (newMsgCount >= vecThreshold) {
+                            const targetEndIndex = currentCount - vecDelay;
+                            console.log(`🤖 [Auto Vectorize] 触发提取与隐藏! 当前:${currentCount}, 间隔:${vecInterval}, 延迟:${vecDelay}, 目标提取至:${targetEndIndex}`);
+
                             if (typeof window.Gaigai.VM.syncChatSummariesToBook === 'function') {
-                                window.Gaigai.VM.syncChatSummariesToBook(true, true).then((res) => {
-                                    API_CONFIG.lastChatVectorIndex = currentCount;
+                                // 传入 endIndex 以限制提取范围
+                                window.Gaigai.VM.syncChatSummariesToBook(true, true, targetEndIndex).then((res) => {
+                                    API_CONFIG.lastChatVectorIndex = targetEndIndex; // 记录到目标抽取位置
                                     localStorage.setItem(AK, JSON.stringify(API_CONFIG));
                                     if (typeof saveAllSettingsToCloud === 'function') { saveAllSettingsToCloud().catch(() => { }); }
                                 }).catch(e => console.error(e));
