@@ -1194,6 +1194,27 @@
                 tableDefinitions = DEFAULT_TABLES;
             }
 
+            // ✅ [自动迁移] 检测 customTables 中人物档案表是否缺少 #外貌 列
+            tableDefinitions.forEach((tb, idx) => {
+                if (tb && tb.n === '人物档案' && Array.isArray(tb.c)) {
+                    if (!tb.c.includes('#外貌')) {
+                        // 找到 #年龄 的位置，在其后插入 #外貌
+                        const ageIdx = tb.c.indexOf('#年龄');
+                        if (ageIdx !== -1) {
+                            tb.c.splice(ageIdx + 1, 0, '#外貌');
+                        } else {
+                            // 如果连 #年龄 都没有，就追加到末尾
+                            tb.c.push('#外貌');
+                        }
+                        console.log(`🔄 [自动迁移] 人物档案表已自动补全 #外貌 列`);
+                        // 同步更新 C.customTables（如果是来自 customTables 的定义）
+                        if (C.customTables && Array.isArray(C.customTables) && C.customTables[idx]) {
+                            C.customTables[idx].c = [...tb.c];
+                        }
+                    }
+                }
+            });
+
             // ✅ 1. 备份数据（仅在需要保留数据时）
             const backupData = [];
             if (preserveData) {
