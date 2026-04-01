@@ -482,6 +482,7 @@
                 maxCount: parseInt(C.vectorMaxCount) || 10,
                 contextDepth: parseInt(C.vectorContextDepth) || 2,
                 separator: C.vectorSeparator || '===',
+                chatSummaryTag: C.vectorChatSummaryTag || 'summary',
                 rerankEnabled: C.rerankEnabled || false,
                 rerankUrl: C.rerankUrl || 'https://api.siliconflow.cn/v1/rerank',
                 rerankKey: C.rerankKey || '',
@@ -1440,6 +1441,169 @@
             }
         }
 
+        /**
+         * 💬 直接从聊天记录提取指定标签的单句摘要为书（更细粒度的 RAG）
+         * @returns {Promise<Object>}
+         */
+        async syncChatSummariesToBook(autoVectorize = false, autoHide = false, endIndex = undefined) {
+            console.log('💬 [VectorManager] 开始从聊天记录提取单句摘要...');
+
+            try {
+                const config = this._getConfig();
+                const tag = config.chatSummaryTag || 'summary';
+
+                // 1. 获取聊天记录
+                const m = window.Gaigai?.m;
+                if (!m) throw new Error('Memory Manager 不可用');
+                const ctx = m.ctx();
+                if (!ctx || !ctx.chat || !Array.isArray(ctx.chat)) {
+                    throw new Error('无法获取聊天记录，当前上下文为空');
+                }
+
+                // 2. 正则匹配：支持跨行匹配
+                // 注意：在JS中匹配跨行需要用 [\\s\\S]*?
+                const tagRegex = new RegExp('<' + tag + '>([\\s\\S]*?)<\\/' + tag + '>', 'ig');
+
+                const newChunks = [];
+                let hasChanges = false;
+                const indicesToHide = [];
+
+                const targetEnd = (endIndex !== undefined && endIndex >= 0 && endIndex <= ctx.chat.length) ? endIndex : ctx.chat.length;
+
+                // 遍历所有消息
+                for (let i = 0; i < targetEnd; i++) {
+                    const msg = ctx.chat[i];
+                    if (!msg || (!msg.mes && !msg.msg)) continue;
+
+                    let text = msg.mes || msg.msg || "";
+                    let match;
+                    let _hasMatch = false;
+
+                    tagRegex.lastIndex = 0; // 重置正则状态
+                    while ((match = tagRegex.exec(text)) !== null) {
+                        if (match[1]) {
+                            const chunkText = match[1].trim();
+                            if (chunkText) {
+                                newChunks.push(chunkText);
+                                _hasMatch = true;
+                            }
+                        }
+                    }
+
+                    if (autoHide && _hasMatch) {
+                        // 如果启用了自动隐藏，直接记录对应的楼层索引，整层隐藏
+                        if (!msg.is_system) {
+                            indicesToHide.push(i);
+                            hasChanges = true;
+                        }
+                    }
+                }
+
+                if (hasChanges && indicesToHide.length > 0) {
+                    let successCount = 0;
+                    for (const index of indicesToHide) {
+                        if (ctx.chat[index]) {
+                            ctx.chat[index].is_system = true;
+                            if (typeof $ !== 'undefined') {
+                                const $mesDiv = $(`#chat .mes[mesid="${index}"]`);
+                                if ($mesDiv.length > 0) {
+                                    $mesDiv.attr('is_system', 'true');
+                                    successCount++;
+                                }
+                            }
+                        }
+                    }
+                    if (m && typeof m.save === 'function') {
+                        m.save(false, true);
+                        console.log(`💬 [VectorManager] 已无感隐藏 ${successCount} 个包含提取摘要的消息楼层，并保存`);
+                    }
+                }
+
+                if (newChunks.length === 0) {
+                    return { success: false, count: 0, error: '当前聊天记录中未找到包含 <' + tag + '>...</' + tag + '> 标签的内容' };
+                }
+
+                console.log(`💬 [VectorManager] 提取到 ${newChunks.length} 条单句摘要`);
+
+                // 3. 准备 ID 和 旧数据缓存
+                const sessionId = m.gid() || 'default';
+                const bookId = 'chat_summary_book_' + sessionId;
+                const defaultBookName = '《单句摘要归档》';
+
+                let existingVectorsMap = new Map();
+                let existingName = defaultBookName;
+                let existingCreateTime = Date.now();
+
+                if (this.library[bookId]) {
+                    const oldBook = this.library[bookId];
+                    existingName = oldBook.name;
+                    existingCreateTime = oldBook.createTime;
+
+                    oldBook.chunks.forEach((text, idx) => {
+                        if (oldBook.vectorized[idx] && oldBook.vectors[idx]) {
+                            existingVectorsMap.set(text, oldBook.vectors[idx]);
+                        }
+                    });
+                    console.log(`♻️ [缓存复用] 已索引 ${existingVectorsMap.size} 条旧摘要向量`);
+                }
+
+                // 4. 构建新书籍数据并复用向量
+                const newVectors = [];
+                const newVectorized = [];
+                let reusedCount = 0;
+
+                newChunks.forEach(text => {
+                    if (existingVectorsMap.has(text)) {
+                        newVectors.push(existingVectorsMap.get(text));
+                        newVectorized.push(true);
+                        reusedCount++;
+                    } else {
+                        newVectors.push(null);
+                        newVectorized.push(false);
+                    }
+                });
+
+                // 5. 更新书架
+                this.library[bookId] = {
+                    name: existingName,
+                    chunks: newChunks,
+                    vectors: newVectors,
+                    vectorized: newVectorized,
+                    createTime: existingCreateTime
+                };
+
+                console.log(`📝 [增量提取] 摘要已更新。复用旧向量: ${reusedCount} 条, 待计算: ${newChunks.length - reusedCount} 条`);
+
+                this.saveLibrary();
+
+                // 6. 自动绑定到当前会话
+                if (ctx.chatMetadata) {
+                    const currentActiveBooks = ctx.chatMetadata.gaigai_activeBooks || [];
+                    if (!currentActiveBooks.includes(bookId)) {
+                        this.setActiveBooks([...currentActiveBooks, bookId]);
+                    }
+                }
+
+                // 7. 增量向量化
+                if (autoVectorize) {
+                    const needsUpdate = newVectorized.includes(false);
+                    if (needsUpdate) {
+                        console.log('⚡ [VectorManager] 检测到新摘要，开始增量向量化...');
+                        const vectorizeResult = await this.vectorizeBook(bookId);
+                        return { success: true, count: newChunks.length, vectorized: true, vectorizeResult, bookId };
+                    } else {
+                        console.log('✅ [VectorManager] 所有摘要均命中缓存，无需调用 API');
+                    }
+                }
+
+                return { success: true, count: newChunks.length, bookId, vectorized: false };
+
+            } catch (error) {
+                console.error('❌ [VectorManager] 提取失败:', error);
+                return { success: false, count: 0, error: error.message };
+            }
+        }
+
 
 
         /**
@@ -1459,7 +1623,7 @@
                 }
 
                 this.saveLibrary();
-                console.log(`🗑️ [VectorManager] 已删除书籍: ${bookId}`);
+                console.log(`🗑️[VectorManager] 已删除书籍: ${bookId}`);
                 return true;
             }
             return false;
@@ -1511,7 +1675,7 @@
 
             // 导出图书馆（仅导出指定的书籍）
             lines.push('>>> 图书馆 <<<');
-                for (const [bookId, book] of booksToExport) {
+            for (const [bookId, book] of booksToExport) {
                 const safeBook = this._normalizeBookShape(book);
                 lines.push('=== 书籍信息 ===');
                 lines.push(`ID: ${bookId}`);
@@ -1541,7 +1705,7 @@
             }
 
             const content = lines.join('\n');
-            console.log(`📤 [VectorManager] 导出完成: ${booksToExport.length} 本书籍`);
+            console.log(`📤[VectorManager] 导出完成: ${booksToExport.length} 本书籍`);
 
             return content;
         }
@@ -1590,7 +1754,7 @@
                             // 🔥 [Bug Fix] 在遇到新书之前，先保存上一本书
                             if (currentBookId && currentEntry && currentEntry.name) {
                                 newLibrary[currentBookId] = currentEntry;
-                                console.log(`📚 [导入] 已保存书籍: ${currentEntry.name} (ID: ${currentBookId})`);
+                                console.log(`📚[导入] 已保存书籍: ${currentEntry.name}(ID: ${currentBookId})`);
                             }
 
                             // 开始新书
@@ -1667,7 +1831,7 @@
                 // 🔥 [Bug Fix] 循环结束后，保存最后一本书
                 if (currentBookId && currentEntry && currentEntry.name) {
                     newLibrary[currentBookId] = currentEntry;
-                    console.log(`📚 [导入] 已保存书籍（最后一本）: ${currentEntry.name} (ID: ${currentBookId})`);
+                    console.log(`📚[导入] 已保存书籍（最后一本）: ${currentEntry.name}(ID: ${currentBookId})`);
                 }
 
                 // 更新数据（合并模式）
@@ -1678,7 +1842,7 @@
 
                 this.saveLibrary();
 
-                console.log(`📥 [VectorManager] 导入合并完成: 新增/更新了 ${Object.keys(newLibrary).length} 本书籍，当前总数: ${Object.keys(this.library).length}`);
+                console.log(`📥[VectorManager] 导入合并完成: 新增 / 更新了 ${Object.keys(newLibrary).length} 本书籍，当前总数: ${Object.keys(this.library).length}`);
 
                 return {
                     success: true,
@@ -1708,149 +1872,149 @@
             const activeBooks = this.getActiveBooks();
 
             const html = `
-                <style>
-                    /* 强制指定主窗口大小，防止被全局样式或小弹窗样式影响 */
-                    #gai-main-pop .g-w {
-                        width: 900px !important;        /* 宽度改小 */
-                        height: 700px !important;       /* 高度改小 */
-                        max-width: 95vw !important;     /* 防止溢出屏幕 */
-                        max-height: 90vh !important;
-                    }
+                < style >
+                /* 强制指定主窗口大小，防止被全局样式或小弹窗样式影响 */
+                #gai - main - pop.g - w {
+                    width: 900px !important;        /* 宽度改小 */
+                    height: 700px !important;       /* 高度改小 */
+                    max- width: 95vw!important;     /* 防止溢出屏幕 */
+                max - height: 90vh!important;
+            }
 
                     /* 内部容器自适应 */
-                    .gg-vm-container {
-                        padding: 20px;
-                        display: flex;
-                        gap: 20px;
-                        height: 100%; /* 填满父容器 */
-                        box-sizing: border-box;
-                        overflow: hidden; /* 防止双重滚动条 */
-                    }
+                    .gg - vm - container {
+                padding: 20px;
+                display: flex;
+                gap: 20px;
+                height: 100 %; /* 填满父容器 */
+                box - sizing: border - box;
+                overflow: hidden; /* 防止双重滚动条 */
+            }
 
-                    .gg-vm-left {
-                        flex: 1;
-                        min-width: 300px;
-                        max-width: 400px;
-                        display: flex;
-                        flex-direction: column;
-                        gap: 12px;
-                        min-height: 0;
-                        overflow-y: auto;
-                        overflow-x: hidden;
-                    }
+                    .gg - vm - left {
+                flex: 1;
+                min - width: 300px;
+                max - width: 400px;
+                display: flex;
+                flex - direction: column;
+                gap: 12px;
+                min - height: 0;
+                overflow - y: auto;
+                overflow - x: hidden;
+            }
 
-                    .gg-vm-right {
-                        flex: 1;
-                        display: flex;
-                        flex-direction: column;
-                        border-left: 1px solid rgba(255,255,255,0.1);
-                        padding-left: 20px;
-                        min-width: 0;
-                    }
+                    .gg - vm - right {
+                flex: 1;
+                display: flex;
+                flex - direction: column;
+                border - left: 1px solid rgba(255, 255, 255, 0.1);
+                padding - left: 20px;
+                min - width: 0;
+            }
 
-                    .gg-vm-config-section,
-                    .gg-vm-global-section {
-                        flex-shrink: 0;
-                    }
+                    .gg - vm - config - section,
+                    .gg - vm - global - section {
+                flex - shrink: 0;
+            }
 
-                    .gg-vm-book-list-wrapper {
-                        flex-shrink: 0;
-                        display: flex;
-                        flex-direction: column;
-                        gap: 8px;
-                    }
+                    .gg - vm - book - list - wrapper {
+                flex - shrink: 0;
+                display: flex;
+                flex - direction: column;
+                gap: 8px;
+            }
 
-                    .gg-vm-book-list {
-                        max-height: 300px;
-                        overflow-y: auto;
-                        border: 1px solid rgba(255,255,255,0.1);
-                        border-radius: 4px;
-                        padding: 10px;
-                        background: rgba(0,0,0,0.1);
-                        min-height: 100px;
-                    }
+                    .gg - vm - book - list {
+                max - height: 300px;
+                overflow - y: auto;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border - radius: 4px;
+                padding: 10px;
+                background: rgba(0, 0, 0, 0.1);
+                min - height: 100px;
+            }
 
-                    /* 响应式：手机端 */
-                    @media (max-width: 768px) {
-                        /* 强制主弹窗在手机上全屏且允许滚动 */
-                        #gai-main-pop .g-w {
-                            width: 100vw !important;
-                            height: 90vh !important;
-                            max-height: 90vh !important;
-                            display: flex !important;
-                            flex-direction: column !important;
-                        }
+            /* 响应式：手机端 */
+            @media(max - width: 768px) {
+                /* 强制主弹窗在手机上全屏且允许滚动 */
+                #gai - main - pop.g - w {
+                    width: 100vw!important;
+                    height: 90vh!important;
+                    max - height: 90vh!important;
+                    display: flex!important;
+                    flex - direction: column!important;
+                }
 
                         /* 内部容器允许滚动 */
-                        .gg-vm-container {
-                            flex-direction: column;
-                            height: 100%;
-                            padding: 10px;
-                            overflow-y: auto; /* 关键：允许垂直滚动 */
-                            gap: 15px;
-                            display: flex;
-                        }
+                        .gg - vm - container {
+                    flex - direction: column;
+                    height: 100 %;
+                    padding: 10px;
+                    overflow - y: auto; /* 关键：允许垂直滚动 */
+                    gap: 15px;
+                    display: flex;
+                }
 
                         /* 左侧栏（API配置等） */
-                        .gg-vm-left {
-                            flex: none; /* 取消伸缩 */
-                            width: 100%;
-                            min-width: 0;
-                            max-width: none;
-                            overflow: visible; /* 让内容撑开高度 */
-                        }
+                        .gg - vm - left {
+                    flex: none; /* 取消伸缩 */
+                    width: 100 %;
+                    min - width: 0;
+                    max - width: none;
+                    overflow: visible; /* 让内容撑开高度 */
+                }
 
                         /* 右侧栏（详情区） */
-                        .gg-vm-right {
-                            flex: none;
-                            width: 100%;
-                            height: 500px; /* 给详情区一个固定高度 */
-                            border-left: none;
-                            border-top: 1px solid rgba(255,255,255,0.1);
-                            padding-left: 0;
-                            padding-top: 15px;
-                            margin-top: 10px;
-                        }
+                        .gg - vm - right {
+                    flex: none;
+                    width: 100 %;
+                    height: 500px; /* 给详情区一个固定高度 */
+                    border - left: none;
+                    border - top: 1px solid rgba(255, 255, 255, 0.1);
+                    padding - left: 0;
+                    padding - top: 15px;
+                    margin - top: 10px;
+                }
 
                         /* 优化书架列表高度，不要太长 */
-                        .gg-vm-book-list {
-                            max-height: 180px;
-                        }
+                        .gg - vm - book - list {
+                    max - height: 180px;
+                }
 
                         /* 模型配置行的布局容器 */
-                        .gg-model-row {
-                            display: flex;
-                            gap: 4px;
-                            align-items: center;
-                        }
+                        .gg - model - row {
+                    display: flex;
+                    gap: 4px;
+                    align - items: center;
+                }
                         /* 按钮组容器 */
-                        .gg-model-btns {
-                            display: flex;
-                            gap: 4px;
-                            flex-shrink: 0; /* 防止按钮被压缩 */
-                        }
+                        .gg - model - btns {
+                    display: flex;
+                    gap: 4px;
+                    flex - shrink: 0; /* 防止按钮被压缩 */
+                }
 
-                        /* 📱 手机端适配 */
-                        @media (max-width: 768px) {
-                            .gg-model-row {
-                                flex-direction: column; /* 改为垂直排列 */
-                                align-items: stretch;
-                                gap: 8px !important;
-                            }
-                            .gg-model-btns {
-                                width: 100%;
-                                display: grid; /* 使用网格布局 */
-                                grid-template-columns: 1fr 1fr; /* 两个按钮平分宽度 */
-                                gap: 10px;
-                            }
-                            .gg-model-btns button {
-                                width: 100% !important;
-                                justify-content: center;
-                                padding: 8px !important; /* 增加手机端点击区域 */
-                            }
-                        }
+                /* 📱 手机端适配 */
+                @media(max - width: 768px) {
+                            .gg - model - row {
+                        flex - direction: column; /* 改为垂直排列 */
+                        align - items: stretch;
+                        gap: 8px!important;
                     }
-                </style>
+                            .gg - model - btns {
+                        width: 100 %;
+                        display: grid; /* 使用网格布局 */
+                        grid - template - columns: 1fr 1fr; /* 两个按钮平分宽度 */
+                        gap: 10px;
+                    }
+                            .gg - model - btns button {
+                        width: 100 % !important;
+                        justify - content: center;
+                        padding: 8px!important; /* 增加手机端点击区域 */
+                    }
+                }
+            }
+                </style >
 
                 <div class="g-p gg-vm-container">
                     <!-- 左侧栏：API配置 + 书架列表 -->
@@ -1935,6 +2099,13 @@
                                 <div style="font-size: 9px; opacity: 0.5; margin-top: 2px; color: ${UI.tc};">导入 TXT 时按此分隔符切分文本</div>
                             </div>
 
+                            <!-- 聊天单句摘要提取标签 -->
+                            <div style="margin-bottom: 8px;">
+                                <label style="display: block; font-size: 10px; opacity: 0.7; color: ${UI.tc}; margin-bottom: 2px;">单句摘要提取标签</label>
+                                <input type="text" id="gg_vm_chat_summary_tag" value="${config.chatSummaryTag || 'summary'}" placeholder="summary" style="width: 100%; padding: 5px; border: 1px solid rgba(255,255,255,0.2); border-radius: 3px; background: rgba(0,0,0,0.2); color: ${UI.tc}; font-size: 10px; box-sizing: border-box;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                                <div style="font-size: 9px; opacity: 0.5; margin-top: 2px; color: ${UI.tc};">提取尖括号内的字符作为切片：如 summary 表示提取 &lt;summary&gt;...&lt;/summary&gt;</div>
+                            </div>
+
                             <!-- 分隔线 -->
                             <div style="border-top: 1px dashed rgba(255,255,255,0.15); margin: 10px 0;"></div>
 
@@ -1974,7 +2145,7 @@
 
                             <!-- 插入变量提示 -->
                             <div style="font-size: 10px; opacity: 0.9; color: ${UI.tc}; margin-top: 4px; margin-bottom: 8px; margin-left: 30px;">
-                                📌 插入变量: <code style="background:rgba(0,0,0,0.1); padding:2px 4px; border-radius:3px; font-weight:bold; font-family:monospace; user-select:all; cursor:text;" title="点击复制">{{VECTOR_MEMORY}}</code> (若不填则默认插入chat history上方)
+                                📌 插入变量: <code style="background:rgba(0,0,0,0.1); padding:2px 4px; border-radius:3px; font-weight:bold; font-family:monospace; user-select:all; cursor:text;" title="点击复制">{{ VECTOR_MEMORY }}</code> (若不填则默认插入chat history上方)
                             </div>
 
                             <button id="gg_vm_save" style="width: 100%; padding: 6px; background: #9C27B0; color: white; border: none; border-radius: 3px; font-size: 10px; cursor: pointer; font-weight: 500;">
@@ -2002,11 +2173,14 @@
 
                                 <!-- 第二排：同步 (独占一行，因为有提示语) -->
                                 <div style="grid-column: 1 / -1;">
+                                    <button id="gg_vm_sync_chat_summaries" style="width: 100%; padding: 10px; background: #E91E63; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 500; margin-bottom: 8px;">
+                                        💬 提取单句摘要到书架 (推荐)
+                                    </button>
                                     <button id="gg_vm_rebuild_table" style="width: 100%; padding: 10px; background: #2196F3; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 500;">
                                         📚 同步总结到书架
                                     </button>
                                     <div style="font-size: 10px; opacity: 0.6; margin-top: 4px; color: ${UI.tc}; text-align: center;">
-                                        💡 将最新的记忆总结表转换为书籍，以便进行向量化检索
+                                        💡 将聊天记录中的摘要或最新的记忆总结表提取为书籍，以便向量化检索
                                     </div>
                                 </div>
 
@@ -2074,11 +2248,11 @@
         _renderBookList(UI, activeBooks) {
             if (Object.keys(this.library).length === 0) {
                 return `
-                    <div style="text-align: center; padding: 40px; color: ${UI.tc}; opacity: 0.5;">
+                < div style = "text-align: center; padding: 40px; color: ${UI.tc}; opacity: 0.5;" >
                         <i class="fa-solid fa-inbox" style="font-size: 48px; margin-bottom: 10px;"></i>
                         <div>书架为空</div>
                         <div style="font-size: 11px; margin-top: 5px;">点击"📂 导入新书"开始</div>
-                    </div>
+                    </div >
                 `;
             }
 
@@ -2091,22 +2265,22 @@
                 const borderColor = isSelected ? '#4CAF50' : 'rgba(255,255,255,0.1)'; // ✅ 选中时高亮
 
                 return `
-                    <div class="gg-book-item" data-id="${bookId}" style="border: 2px solid ${borderColor}; border-radius: 4px; padding: 10px; margin-bottom: 8px; background: rgba(255,255,255,0.02); cursor: pointer; position: relative;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" class="gg-book-checkbox" data-id="${bookId}" ${isActive ? 'checked' : ''} style="transform: scale(1.2); cursor: pointer;" />
-                            <div style="flex: 1; min-width: 0;">
-                                <div class="gg-book-name" style="font-size: 12px; font-weight: 600; color: ${UI.tc}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${this._escapeHtml(book.name)}">
-                                    ${this._escapeHtml(book.name)}
-                                </div>
-                                <div style="font-size: 10px; color: ${UI.tc}; opacity: 0.6; margin-top: 2px;">
-                                    ${totalChunks} 片段 • ${progress}% 向量化
-                                </div>
+                < div class="gg-book-item" data - id="${bookId}" style = "border: 2px solid ${borderColor}; border-radius: 4px; padding: 10px; margin-bottom: 8px; background: rgba(255,255,255,0.02); cursor: pointer; position: relative;" >
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" class="gg-book-checkbox" data-id="${bookId}" ${isActive ? 'checked' : ''} style="transform: scale(1.2); cursor: pointer;" />
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="gg-book-name" style="font-size: 12px; font-weight: 600; color: ${UI.tc}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${this._escapeHtml(book.name)}">
+                                ${this._escapeHtml(book.name)}
                             </div>
-                            <button class="gg-book-delete" data-id="${bookId}" style="padding: 3px 8px; background: #f44336; color: white; border: none; border-radius: 3px; font-size: 10px; cursor: pointer;">
-                                🗑️
-                            </button>
+                            <div style="font-size: 10px; color: ${UI.tc}; opacity: 0.6; margin-top: 2px;">
+                                ${totalChunks} 片段 • ${progress}% 向量化
+                            </div>
                         </div>
+                        <button class="gg-book-delete" data-id="${bookId}" style="padding: 3px 8px; background: #f44336; color: white; border: none; border-radius: 3px; font-size: 10px; cursor: pointer;">
+                            🗑️
+                        </button>
                     </div>
+                    </div >
                 `;
             }).join('');
         }
@@ -2118,10 +2292,10 @@
         _renderDetailArea(UI) {
             if (!this.selectedBookId || !this.library[this.selectedBookId]) {
                 return `
-                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: ${UI.tc}; opacity: 0.5; flex-direction: column; gap: 10px;">
+                < div style = "display: flex; align-items: center; justify-content: center; height: 100%; color: ${UI.tc}; opacity: 0.5; flex-direction: column; gap: 10px;" >
                         <i class="fa-solid fa-arrow-left" style="font-size: 48px;"></i>
                         <div style="font-size: 14px;">请从左侧选择一本书查看详情</div>
-                    </div>
+                    </div >
                 `;
             }
 
@@ -2131,8 +2305,8 @@
             const progress = totalChunks > 0 ? Math.round((vectorizedCount / totalChunks) * 100) : 0;
 
             return `
-                <div style="display: flex; flex-direction: column; height: 100%;">
-                    <!-- 书籍标题 -->
+                < div style = "display: flex; flex-direction: column; height: 100%;" >
+                    < !--书籍标题 -->
                     <div style="margin-bottom: 15px;">
                         <div style="font-size: 18px; font-weight: bold; color: ${UI.tc}; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
                             <span>${this._escapeHtml(book.name)}</span>
@@ -2154,7 +2328,7 @@
                         </div>
                     </div>
 
-                    <!-- 操作按钮 -->
+                    <!--操作按钮 -->
                     <div style="margin-bottom: 15px; display: flex; gap: 8px;">
                         <button id="gg_vm_edit_source" style="flex: 1; padding: 8px; background: #2196F3; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 500;">
                             ✏️ 编辑/追加源文本
@@ -2164,12 +2338,12 @@
                         </button>
                     </div>
 
-                    <!-- 片段列表 -->
-                    <div style="flex: 1; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 10px; background: rgba(0,0,0,0.1);">
-                        ${this._renderChunkList(book, UI)}
-                    </div>
+                    <!--片段列表 -->
+                <div style="flex: 1; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 10px; background: rgba(0,0,0,0.1);">
+                    ${this._renderChunkList(book, UI)}
                 </div>
-            `;
+                </div >
+                `;
         }
 
         /**
@@ -2194,7 +2368,7 @@
                 const preview = chunk.substring(0, 100) + (chunk.length > 100 ? '...' : '');
 
                 return `
-                    <div class="gg-chunk-item" data-index="${index}" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 8px; margin-bottom: 6px; background: rgba(255,255,255,0.02); cursor: pointer;">
+                < div class="gg-chunk-item" data - index="${index}" style = "border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 8px; margin-bottom: 6px; background: rgba(255,255,255,0.02); cursor: pointer;" >
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                             <div style="font-size: 10px; color: ${UI.tc}; opacity: 0.7; font-weight: 600;">
                                 片段 ${index} · ${typeLabel}
@@ -2206,7 +2380,7 @@
                         <div style="font-size: 11px; color: ${UI.tc}; line-height: 1.4; opacity: 0.9;">
                             ${this._escapeHtml(preview)}
                         </div>
-                    </div>
+                    </div >
                 `;
             }).join('');
         }
@@ -2238,7 +2412,7 @@
 
             return new Promise((resolve) => {
                 const html = `
-                    <div class="g-p" style="padding: 8px;">
+                < div class="g-p" style = "padding: 8px;" >
                         <p style="font-size: 10px; color: var(--g-tc) !important; margin-bottom: 6px; line-height: 1.3;">
                         ${this._escapeHtml(message)}
                         </p>
@@ -2258,7 +2432,7 @@
                                 确认
                             </button>
                         </div>
-                    </div>
+                    </div >
                 `;
 
                 // 移除旧弹窗
@@ -2281,7 +2455,7 @@
 
                 // 标题栏
                 const $hd = $('<div>', { class: 'g-hd' });
-                $hd.append(`<h3 style="color:${UI.tc}; flex:1;">${this._escapeHtml(title)}</h3>`);
+                $hd.append(`< h3 style = "color:${UI.tc}; flex:1;" > ${this._escapeHtml(title)}</h3 > `);
 
                 // 关闭按钮
                 const $x = $('<button>', {
@@ -2346,7 +2520,7 @@
 
             return new Promise((resolve) => {
                 const html = `
-                    <div class="g-p" style="padding: 15px;">
+                < div class="g-p" style = "padding: 15px;" >
                         <div style="font-size: 13px; color: ${UI.tc}; line-height: 1.6; margin-bottom: 15px; white-space: pre-wrap;">${this._escapeHtml(message)}</div>
                         <div style="display: flex; gap: 8px; justify-content: flex-end;">
                             <button id="gg_vm_confirm_cancel" style="padding: 8px 16px; background: #6c757d; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
@@ -2356,7 +2530,7 @@
                                 确认删除
                             </button>
                         </div>
-                    </div>
+                    </div >
                 `;
 
                 // 移除旧弹窗
@@ -2379,7 +2553,7 @@
 
                 // 标题栏
                 const $hd = $('<div>', { class: 'g-hd' });
-                $hd.append(`<h3 style="color:${UI.tc}; flex:1;">${this._escapeHtml(title)}</h3>`);
+                $hd.append(`< h3 style = "color:${UI.tc}; flex:1;" > ${this._escapeHtml(title)}</h3 > `);
 
                 // 关闭按钮
                 const $x = $('<button>', {
@@ -2440,7 +2614,7 @@
 
             return new Promise((resolve) => {
                 const html = `
-                    <div class="g-p" style="padding: 12px; display: flex; flex-direction: column; height: 100%;">
+                < div class="g-p" style = "padding: 12px; display: flex; flex-direction: column; height: 100%;" >
                         <div style="font-size: 10px; color: ${UI.tc}; opacity: 0.7; margin-bottom: 8px;">
                             💡 提示：修改后会自动重置向量状态，需重新向量化
                         </div>
@@ -2456,7 +2630,7 @@
                                 💾 保存
                             </button>
                         </div>
-                    </div>
+                    </div >
                 `;
 
                 // 移除旧弹窗
@@ -2478,7 +2652,7 @@
 
                 // 标题栏
                 const $hd = $('<div>', { class: 'g-hd' });
-                $hd.append(`<h3 style="color:${UI.tc}; flex:1;">${this._escapeHtml(title)}</h3>`);
+                $hd.append(`< h3 style = "color:${UI.tc}; flex:1;" > ${this._escapeHtml(title)}</h3 > `);
 
                 // 关闭按钮
                 const $x = $('<button>', {
@@ -2545,7 +2719,7 @@
                 }
 
                 // 3. 实时反馈
-                console.log(`💠 [设置] 独立向量检索已${isEnabled ? '开启' : '关闭'}`);
+                console.log(`💠[设置] 独立向量检索已${isEnabled ? '开启' : '关闭'} `);
 
                 // 4. 同步到云端
                 if (typeof window.Gaigai.saveAllSettingsToCloud === 'function') {
@@ -2554,7 +2728,7 @@
 
                 // 5. 用户提示
                 if (typeof toastr !== 'undefined') {
-                    toastr.success(`向量检索已${isEnabled ? '开启' : '关闭'}`, '设置更新', { timeOut: 1500 });
+                    toastr.success(`向量检索已${isEnabled ? '开启' : '关闭'} `, '设置更新', { timeOut: 1500 });
                 }
             });
 
@@ -2567,7 +2741,7 @@
             // 密码显示/隐藏切换
             $('.gg-vm-toggle-key').off('click').on('click', function () {
                 const targetId = $(this).data('target');
-                const $input = $(`#${targetId}`);
+                const $input = $(`#${targetId} `);
                 const currentType = $input.attr('type');
 
                 if (currentType === 'password') {
@@ -2668,7 +2842,7 @@
                     });
 
                     // 3. 添加切换回输入框的逻辑
-                    $select.on('change', function() {
+                    $select.on('change', function () {
                         if ($(this).val() === '__manual__') {
                             // 重新创建文本输入框
                             const $newInput = $('<input>', {
@@ -2867,7 +3041,7 @@
                         }));
                     });
 
-                    $select.on('change', function() {
+                    $select.on('change', function () {
                         if ($(this).val() === '__manual__') {
                             const $newInput = $('<input>', {
                                 type: 'text',
@@ -2969,6 +3143,7 @@
                     C.vectorMaxCount = parseInt($('#gg_vm_max_count').val()) || 3;
                     C.vectorContextDepth = parseInt($('#gg_vm_context_depth').val()) || 1;
                     C.vectorSeparator = $('#gg_vm_separator').val().trim() || '===';
+                    C.vectorChatSummaryTag = $('#gg_vm_chat_summary_tag').val().trim() || 'summary';
 
                     // Rerank 配置
                     C.rerankEnabled = $('#gg_vm_rerank_enabled').is(':checked');
@@ -3014,11 +3189,11 @@
 
                     const result = await self.syncSummaryToBook();
 
-                        if (result.success) {
-                            if (typeof toastr !== 'undefined') {
-                                toastr.success(`已同步 ${result.count} 条总结到《剧情总结归档》`, '同步成功');
-                            } else {
-                                await customAlert(`✅ 同步成功\n\n已同步 ${result.count} 条总结`, '成功');
+                    if (result.success) {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.success(`已同步 ${result.count} 条总结到《剧情总结归档》`, '同步成功');
+                        } else {
+                            await customAlert(`✅ 同步成功\n\n已同步 ${result.count} 条总结`, '成功');
                         }
 
                         // 自动选中新创建/更新的书籍
@@ -3048,6 +3223,45 @@
                 } catch (e) {
                     console.error('❌ [VectorManager] 同步失败:', e);
                     await customAlert(`❌ 同步失败\n\n${e.message}`, '错误');
+                } finally {
+                    btn.html(oldText).prop('disabled', false);
+                }
+            });
+
+            // 提取单句摘要到书架
+            $('#gg_vm_sync_chat_summaries').off('click').on('click', async () => {
+                const btn = $('#gg_vm_sync_chat_summaries');
+                const oldText = btn.html();
+
+                try {
+                    const m = window.Gaigai?.m;
+                    if (!m) {
+                        await customAlert('⚠️ Memory Manager 不可用', '错误');
+                        return;
+                    }
+
+                    btn.html('<i class="fa-solid fa-spinner fa-spin"></i> 提取中...').prop('disabled', true);
+
+                    const result = await self.syncChatSummariesToBook();
+
+                    if (result.success) {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.success(`提取完毕！共提取了 ${result.count} 条摘要并缓存到《单句摘要归档》`, '提取成功');
+                        } else {
+                            await customAlert(`✅ 提取成功\n\n已提取 ${result.count} 条摘要`, '成功');
+                        }
+
+                        // 自动选中新创建/更新的书籍
+                        self.selectedBookId = result.bookId;
+                        self.showUI();
+                    } else if (result.count === 0 && result.error && result.error.includes("未找到")) {
+                        await customAlert(`⚠️ ${result.error}`, '提示');
+                    } else {
+                        throw new Error(result.error || '提取失败');
+                    }
+                } catch (e) {
+                    console.error('❌ [VectorManager] 提取单句摘要失败:', e);
+                    await customAlert(`❌ 提取失败\n\n${e.message}`, '错误');
                 } finally {
                     btn.html(oldText).prop('disabled', false);
                 }
@@ -3178,7 +3392,7 @@
 
                     // 获取所有勾选的书籍ID
                     const checkedBookIds = [];
-                    $('.gg-book-checkbox:checked').each(function() {
+                    $('.gg-book-checkbox:checked').each(function () {
                         const bookId = $(this).data('id');
                         if (bookId) {
                             checkedBookIds.push(bookId);

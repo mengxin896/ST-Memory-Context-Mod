@@ -78,9 +78,13 @@
         cloudSync: true,
         syncWorldInfo: false,          // ❌ 默认关闭世界书同步
         worldInfoVectorized: false,    // ❌ 默认关闭世界书自带向量化（已移除UI选项）
-        autoVectorizeSummary: false,   // ❌ 默认关闭总结后自动向量化（每聊隔离）
         // ==================== 独立向量检索配置 ====================
         vectorEnabled: false,          // ❌ 默认关闭独立向量检索
+        autoVectorizeSummary: false,   // ❌ 默认关闭总结后自动向量化（每聊隔离）
+        autoChatVectorize: false,      // ❌ 默认关闭单句摘要自动提取
+        autoChatVectorizeFloor: 10,    // ✅ 默认 10 楼触发
+        autoChatVectorizeDelay: true,  // ❌ 默认开启延迟
+        autoChatVectorizeDelayCount: 6,// ✅ 默认 6 楼触发缓冲
         vectorProvider: 'openai',      // 向量服务提供商
         vectorUrl: '',                 // 向量 API 地址
         vectorKey: '',                 // 向量 API 密钥
@@ -133,7 +137,7 @@
         { n: '主线剧情', c: ['#日期', '#开始时间', '#完结时间', '事件概要', '#状态'] },
         { n: '支线追踪', c: ['#状态', '#支线名', '#开始时间', '#完结时间', '事件追踪', '#关键NPC'] },
         { n: '角色状态', c: ['#角色名', '#状态变化', '#时间', '#原因', '#当前位置'] },
-        { n: '人物档案', c: ['#姓名', '#年龄', '#身份', '#地点', '#性格', '#备注'] },
+        { n: '人物档案', c: ['#姓名', '#年龄', '#外貌', '#身份', '#地点', '#性格', '#备注'] },
         { n: '人物关系', c: ['#角色A', '#角色B', '#关系描述', '#情感态度'] },
         { n: '世界设定', c: ['#设定名', '#类型', '#详细说明', '#影响范围'] },
         { n: '物品追踪', c: ['#物品名称', '物品描述', '#当前位置', '#持有者', '#状态', '#重要程度', '#备注'] },
@@ -1359,6 +1363,10 @@
                     vectorThreshold: C.vectorThreshold,
                     vectorMaxCount: C.vectorMaxCount,
                     autoVectorizeSummary: C.autoVectorizeSummary,
+                    autoChatVectorize: C.autoChatVectorize,
+                    autoChatVectorizeFloor: C.autoChatVectorizeFloor,
+                    autoChatVectorizeDelay: C.autoChatVectorizeDelay,
+                    autoChatVectorizeDelayCount: C.autoChatVectorizeDelayCount,
                     // ✅ 视图配置
                     reverseView: C.reverseView
                 }
@@ -1660,6 +1668,8 @@
                 // --- 2. 数值类 ---
                 C.autoBackfillFloor = globalConfig.autoBackfillFloor !== undefined ? globalConfig.autoBackfillFloor : 20;
                 C.autoSummaryFloor = globalConfig.autoSummaryFloor !== undefined ? globalConfig.autoSummaryFloor : 50;
+                C.autoChatVectorizeFloor = globalConfig.autoChatVectorizeFloor !== undefined ? globalConfig.autoChatVectorizeFloor : 10;
+                C.autoChatVectorizeDelayCount = globalConfig.autoChatVectorizeDelayCount !== undefined ? globalConfig.autoChatVectorizeDelayCount : 6;
                 C.autoBackfillDelay = globalConfig.autoBackfillDelay !== undefined ? globalConfig.autoBackfillDelay : true;
                 C.autoBackfillDelayCount = globalConfig.autoBackfillDelayCount !== undefined ? globalConfig.autoBackfillDelayCount : 6;
                 C.autoSummaryDelay = globalConfig.autoSummaryDelay !== undefined ? globalConfig.autoSummaryDelay : true;
@@ -1677,6 +1687,9 @@
                 C.worldInfoVectorized = globalConfig.worldInfoVectorized !== undefined ? globalConfig.worldInfoVectorized : false;
                 // ✅ 向量检索配置
                 C.vectorEnabled = globalConfig.vectorEnabled !== undefined ? globalConfig.vectorEnabled : false;
+                C.autoVectorizeSummary = globalConfig.autoVectorizeSummary !== undefined ? globalConfig.autoVectorizeSummary : false;
+                C.autoChatVectorize = globalConfig.autoChatVectorize !== undefined ? globalConfig.autoChatVectorize : false;
+                C.autoChatVectorizeDelay = globalConfig.autoChatVectorizeDelay !== undefined ? globalConfig.autoChatVectorizeDelay : true;
                 C.vectorUrl = globalConfig.vectorUrl !== undefined ? globalConfig.vectorUrl : '';
                 C.vectorKey = globalConfig.vectorKey !== undefined ? globalConfig.vectorKey : '';
                 C.vectorModel = globalConfig.vectorModel !== undefined ? globalConfig.vectorModel : 'BAAI/bge-m3';
@@ -10321,6 +10334,37 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
             </div>
         </div>
 
+        <!-- 🆕 自动提取并隐藏单句摘要 -->
+        <div style="background: rgba(156,39,176,0.1); border-radius: 8px; padding: 10px; border: 1px solid rgba(156,39,176,0.2); margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label style="font-weight: 600; color: #ba68c8;">💬 摘要提取 & 隐藏</label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 11px;">每</span>
+                    <input type="number" id="gg_c_auto_vec_floor" value="${C.autoChatVectorizeFloor}" min="1" max="100" style="width: 50px; text-align: center; border-radius: 4px; border:1px solid rgba(0,0,0,0.2);" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                    <span style="font-size: 11px;">条</span>
+                    <input type="checkbox" id="gg_c_auto_vec_chat" ${C.autoChatVectorize ? 'checked' : ''} style="transform: scale(1.2);">
+                </div>
+            </div>
+            
+            <div id="gg_auto_vec_settings" style="padding: 8px; background: rgba(0,0,0,0.03); border-radius: 4px; margin-top: 8px; ${C.autoChatVectorize ? '' : 'display:none;'}">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; margin-bottom: 6px;">
+                    <input type="checkbox" id="gg_c_auto_vec_delay" ${C.autoChatVectorizeDelay ? 'checked' : ''} style="transform: scale(1.2);">
+                    <span style="color:${UI.tc};">⏱️ 延迟执行保护</span>
+                </label>
+                <div id="gg_auto_vec_delay_options" style="margin-top: 4px; padding-left: 24px; display: ${C.autoChatVectorizeDelay ? 'block' : 'none'};">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 11px; color:${UI.tc};">延迟</span>
+                        <input type="number" id="gg_c_auto_vec_delay_count" value="${C.autoChatVectorizeDelayCount}" min="1" max="100" style="width: 50px; text-align: center; border-radius: 4px; border:1px solid rgba(0,0,0,0.2);" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                        <span style="font-size: 11px; color:${UI.tc};">层记录 (防止撤回或重试)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="font-size: 10px; color: ${UI.tc}; opacity: 0.7; margin-top: 6px;">
+                💡 自动提取聊天中的 &lt;summary&gt; 进行向量化，并将原文本替换为隐藏注释以节省 Token。
+            </div>
+        </div>
+
         <div style="background: rgba(255,255,255,0.15); border-radius: 8px; padding: 10px; border: 1px solid rgba(255,255,255,0.2);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <label style="font-weight: 600;">🤖 自动总结</label>
@@ -10891,6 +10935,10 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                 C.tableInj = $('#gg_c_table_inj').is(':checked');
                 C.autoSummary = $('#gg_c_auto_sum').is(':checked');
                 C.autoSummaryFloor = parseInt($('#gg_c_auto_floor').val());
+                C.autoChatVectorize = $('#gg_c_auto_vec_chat').is(':checked');
+                C.autoChatVectorizeFloor = parseInt($('#gg_c_auto_vec_floor').val()) || 10;
+                C.autoChatVectorizeDelay = $('#gg_c_auto_vec_delay').is(':checked');
+                C.autoChatVectorizeDelayCount = parseInt($('#gg_c_auto_vec_delay_count').val()) || 6;
                 C.autoSummaryPrompt = $('#gg_c_auto_sum_prompt').is(':checked');
                 C.autoSummarySilent = $('#gg_c_auto_sum_silent').is(':checked');
                 C.autoSummaryDelay = $('#gg_c_auto_sum_delay').is(':checked');
@@ -11701,6 +11749,27 @@ updateRow(1, 0, {4: "王五销毁了图纸..."})
                                     window.Gaigai.BackfillManager.autoRunBackfill(lastBfIndex, targetEndIndex, false, -1, '', 'chat', false, null, true);
                                     hasBackfilledThisTurn = true;
                                 }
+                            }
+                        }
+                    }
+
+                    // ============================================================
+                    // 模块 A-3: 单句摘要提取与隐藏
+                    // ============================================================
+                    if (C.autoChatVectorize && window.Gaigai.VM) {
+                        const lastIndex = API_CONFIG.lastChatVectorIndex || 0;
+                        const currentCount = x.chat.length;
+                        const newMsgCount = currentCount - lastIndex;
+                        const vecInterval = C.autoChatVectorizeFloor || 10;
+
+                        if (newMsgCount >= vecInterval) {
+                            console.log(`🤖 [Auto Vectorize] 触发提取与隐藏! 当前:${currentCount}, 间隔:${vecInterval}`);
+                            if (typeof window.Gaigai.VM.syncChatSummariesToBook === 'function') {
+                                window.Gaigai.VM.syncChatSummariesToBook(true, true).then((res) => {
+                                    API_CONFIG.lastChatVectorIndex = currentCount;
+                                    localStorage.setItem(AK, JSON.stringify(API_CONFIG));
+                                    if (typeof saveAllSettingsToCloud === 'function') { saveAllSettingsToCloud().catch(() => { }); }
+                                }).catch(e => console.error(e));
                             }
                         }
                     }

@@ -8,11 +8,11 @@
  * @author Gaigai Team
  */
 
-(function() {
+(function () {
     'use strict';
 
     // 【全局单例】总结控制台表格选择按钮监听器（防止重复绑定）
-    (function() {
+    (function () {
         if (window._gg_sum_table_selector_bound) return;
         window._gg_sum_table_selector_bound = true;
 
@@ -20,7 +20,7 @@
         let lastClickTime = 0; // 记录上次点击时间
 
         // 暴露到全局，供内联事件调用
-        window._gg_openSumTableSelector = function(event) {
+        window._gg_openSumTableSelector = function (event) {
             // ✅ 修复1: 阻止事件冒泡和默认行为
             if (event) {
                 event.preventDefault();
@@ -158,7 +158,7 @@
                         }
                     });
 
-                    $(document).off('click.gg_sum_card').on('click.gg_sum_card', '.gg-choice-card', function(e) {
+                    $(document).off('click.gg_sum_card').on('click.gg_sum_card', '.gg-choice-card', function (e) {
                         // ✅ Fix: If the input itself is clicked, let the browser handle it natively
                         if ($(e.target).is('input')) return;
 
@@ -170,7 +170,7 @@
 
                     $('#gg_sum_modal_save').on('click', function () {
                         const selectedIndices = [];
-                        $('.gg_sum_table_checkbox_modal').each(function() {
+                        $('.gg_sum_table_checkbox_modal').each(function () {
                             const tableIndex = $(this).data('table-index');
                             const isChecked = $(this).is(':checked');
                             $(`.gg_table_checkbox[data-table-index="${tableIndex}"]`).prop('checked', isChecked);
@@ -694,6 +694,16 @@
                     <button id="gg_save_big_sum_pointer_btn" style="padding: 4px 12px; background: #ff9800; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap; flex-shrink: 0;">修正</button>
                 </div>
 
+                <!-- 聊天摘要向量指针 -->
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 11px;">
+                    <span style="font-weight: bold; white-space: nowrap; color: #ba68c8;">💬 单句摘要指针:</span>
+                    <div style="display: flex; align-items: center; gap: 5px; flex: 1;">
+                        <input type="number" id="gg_edit_vec_pointer" value="${API_CONFIG.lastChatVectorIndex || 0}" min="0" max="${totalCount}" style="width: 100%; min-width: 50px; text-align: center; padding: 4px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.2); font-size: 11px;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                        <span style="white-space: nowrap;">/ ${totalCount} 层</span>
+                    </div>
+                    <button id="gg_save_vec_pointer_btn" style="padding: 4px 12px; background: #9c27b0; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap; flex-shrink: 0;">修正</button>
+                </div>
+
                 <!-- 底部提示与链接 -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                     <span style="font-size: 9px; opacity: 0.6;">💡 指针会自动保存，切换角色时恢复</span>
@@ -719,17 +729,17 @@
                     <!-- 🆕 表格选择按钮 -->
                     <button type="button" id="gg_sum_open_table_selector" onclick="window._gg_openSumTableSelector(event)" style="width: 100%; padding: 12px; background: ${UI.c}; color: ${UI.tc}; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; text-align: center; transition: all 0.2s; touch-action: manipulation;">
                         <span style="pointer-events: none;" id="gg_sum_table_selector_text">${(() => {
-                            const savedSelection = C.manualSummaryTargetTables;
+                    const savedSelection = C.manualSummaryTargetTables;
 
-                            // ✅ 修正显示逻辑：undefined/null=默认全选, []=未选择, [1,2]=已选择X个
-                            if (savedSelection === undefined || savedSelection === null) {
-                                return `🎯 默认全选 ${dataTables.length} 个表格 (点击修改)`;
-                            } else if (Array.isArray(savedSelection) && savedSelection.length === 0) {
-                                return `⚠️ 未选择表格 (点击修改)`;
-                            } else {
-                                return `🎯 已选择 ${savedSelection.length} 个表格 (点击修改)`;
-                            }
-                        })()}</span>
+                    // ✅ 修正显示逻辑：undefined/null=默认全选, []=未选择, [1,2]=已选择X个
+                    if (savedSelection === undefined || savedSelection === null) {
+                        return `🎯 默认全选 ${dataTables.length} 个表格 (点击修改)`;
+                    } else if (Array.isArray(savedSelection) && savedSelection.length === 0) {
+                        return `⚠️ 未选择表格 (点击修改)`;
+                    } else {
+                        return `🎯 已选择 ${savedSelection.length} 个表格 (点击修改)`;
+                    }
+                })()}</span>
                     </button>
 
                     <div style="font-size: 9px; color: ${UI.tc}; opacity: 0.6; margin-top: 6px;">
@@ -845,7 +855,7 @@
             window.Gaigai.pop('🤖 总结控制台', h, true);
 
             // 阻止输入框的按键冒泡
-            $('#gg_sum_chat-start, #gg_sum_chat-end, #gg_sum_step, #gg_opt_range-input, #gg_opt_prompt, #gg_edit_sum_pointer, #gg_edit_big_sum_pointer').on('keydown keyup input', function (e) {
+            $('#gg_sum_chat-start, #gg_sum_chat-end, #gg_sum_step, #gg_opt_range-input, #gg_opt_prompt, #gg_edit_sum_pointer, #gg_edit_big_sum_pointer, #gg_edit_vec_pointer').on('keydown keyup input', function (e) {
                 e.stopPropagation();
             });
 
@@ -878,10 +888,10 @@
                         if (window.Gaigai.summaryBatchProgress) {
                             const { current, total } = window.Gaigai.summaryBatchProgress;
                             $status.text(`🔄 正在执行第 ${current}/${total} 批...`)
-                                   .css('color', '#17a2b8');
+                                .css('color', '#17a2b8');
                         } else {
                             $status.text('⚠️ 分批任务正在后台执行，点击按钮可停止')
-                                   .css('color', '#ff9800');
+                                .css('color', '#ff9800');
                         }
                     }
                     console.log('🔄 [界面恢复] 检测到分批总结正在执行，已恢复按钮状态');
@@ -927,7 +937,7 @@
                 }
 
                 // ✨ 修正进度按钮点击事件
-                $('#gg_save_sum_pointer_btn').on('click', async function() {
+                $('#gg_save_sum_pointer_btn').on('click', async function () {
                     const API_CONFIG = window.Gaigai.config;
                     const ctx = m.ctx();
                     const totalCount = ctx && ctx.chat ? ctx.chat.length : 0;
@@ -970,8 +980,45 @@
                     setTimeout(() => self.showUI(), 300);
                 });
 
+                // ✨ 单句摘要提取指针修正按钮点击事件
+                $('#gg_save_vec_pointer_btn').on('click', async function () {
+                    const API_CONFIG = window.Gaigai.config;
+                    const ctx = m.ctx();
+                    const totalCount = ctx && ctx.chat ? ctx.chat.length : 0;
+
+                    const newPointer = parseInt($('#gg_edit_vec_pointer').val());
+
+                    if (isNaN(newPointer) || newPointer < 0 || newPointer > totalCount) {
+                        await window.Gaigai.customAlert(`⚠️ 输入无效！\n\n请输入 0 到 ${totalCount} 之间的数字`, '错误');
+                        return;
+                    }
+
+                    API_CONFIG.lastChatVectorIndex = newPointer;
+
+                    try {
+                        localStorage.setItem('gg_api', JSON.stringify(API_CONFIG));
+                        console.log(`✅ [进度修正] 单句摘要指针已更新至: ${newPointer}`);
+                    } catch (e) {
+                        console.error('❌ [进度修正] localStorage 保存失败:', e);
+                    }
+
+                    if (typeof window.Gaigai.saveAllSettingsToCloud === 'function') {
+                        window.Gaigai.saveAllSettingsToCloud().catch(err => {
+                            console.warn('⚠️ [进度修正] 云端同步失败:', err);
+                        });
+                    }
+
+                    m.save(false, true);
+
+                    if (typeof toastr !== 'undefined') {
+                        toastr.success(`单句摘要进度已修正为 ${newPointer}`, '更新成功', { timeOut: 2000 });
+                    }
+
+                    setTimeout(() => self.showUI(), 300);
+                });
+
                 // ✨ 大总结指针修正按钮点击事件
-                $('#gg_save_big_sum_pointer_btn').on('click', async function() {
+                $('#gg_save_big_sum_pointer_btn').on('click', async function () {
                     const API_CONFIG = window.Gaigai.config;
                     const ctx = m.ctx();
                     const totalCount = ctx && ctx.chat ? ctx.chat.length : 0;
@@ -1008,7 +1055,7 @@
                 });
 
                 // ✨ 修改配置链接点击事件
-                $('#gg_open_config_link').on('click', function(e) {
+                $('#gg_open_config_link').on('click', function (e) {
                     e.preventDefault();
                     // 跳转到配置页面
                     if (typeof window.Gaigai.navTo === 'function' && typeof window.Gaigai.shcf === 'function') {
@@ -1017,13 +1064,13 @@
                 });
 
                 // 表格快照总结
-                $('#gg_sum_table-snap').on('click', async function() {
+                $('#gg_sum_table-snap').on('click', async function () {
                     const $btn = $(this);
                     const oldText = $btn.text();
 
                     // 🆕 获取用户选中的表格索引
                     const selectedTableIndices = [];
-                    $('.gg_table_checkbox:checked').each(function() {
+                    $('.gg_table_checkbox:checked').each(function () {
                         const index = parseInt($(this).data('table-index'));
                         if (!isNaN(index)) {
                             selectedTableIndices.push(index);
@@ -1162,7 +1209,7 @@
                 });
 
                 // 总结优化 - 目标选择变化
-                $('#gg_opt_target').on('change', function() {
+                $('#gg_opt_target').on('change', function () {
                     const val = $(this).val();
                     if (val === 'specific' || val === 'range') {
                         $('#gg_opt_specific-row').slideDown(200);
@@ -1172,7 +1219,7 @@
                 });
 
                 // 🆕 总结优化 - 分批模式切换
-                $('#gg_opt_batch_mode').on('change', function() {
+                $('#gg_opt_batch_mode').on('change', function () {
                     const isChecked = $(this).is(':checked');
 
                     if (isChecked) {
@@ -1189,7 +1236,7 @@
                 });
 
                 // 🆕 总结优化 - 步长变化时保存
-                $('#gg_opt_batch_step').on('change', function() {
+                $('#gg_opt_batch_step').on('change', function () {
                     const step = parseInt($(this).val()) || 5;
                     C.optimizeBatchStep = step;
                     localStorage.setItem('gg_config', JSON.stringify(C));
@@ -1198,7 +1245,7 @@
                 });
 
                 // 总结优化 - 按钮点击事件（重构版：支持停止功能）
-                $('#gg_opt_run').on('click', async function() {
+                $('#gg_opt_run').on('click', async function () {
                     const $btn = $(this);
 
                     // 🛑 检测是否正在运行优化任务
@@ -1505,7 +1552,7 @@
                         hasTableData = true;
                         // 找到该表格在 m.s 中的实际索引
                         const actualIndex = m.s.indexOf(sheet);
-                        
+
                         // ✨✨✨ 修复：加上 name 和 isGaigaiData，让探针显示表名
                         messages.push({
                             role: 'system',
@@ -2197,14 +2244,14 @@
                     if (alreadyExists) {
                         const msg = `⚠️ 拦截提示：检测到总结表格中已存在 [ ${start}-${end} ] 楼层的记录！\n\n大总结已自动取消。请手动前往总结控制台修正【大总结指针】，或自行检查已有内容。`;
                         console.warn(`🛑 [大总结] ${msg}`);
-                        
+
                         // 弹出提示 (兼容不同环境)
                         if (typeof toastr !== 'undefined') {
                             toastr.warning(`已存在 ${start}-${end} 楼层总结，大总结已取消，请手动修正指针。`, '⚠️ 大总结拦截', { timeOut: 8000 });
                         } else {
                             await window.Gaigai.customAlert(msg, '⚠️ 大总结拦截');
                         }
-                        
+
                         return; // 存在相同区间，直接终止大总结流程
                     }
                 }
@@ -2397,7 +2444,7 @@
                     // ✨✨✨ 修复：如果用户已经点了停止，直接退出，不要弹窗问废话
                     if (window.Gaigai.stopBatch) {
                         console.warn(`🛑 [分批总结] 检测到用户停止，跳过异常弹窗`);
-                        break; 
+                        break;
                     }
 
                     console.error(`❌ [分批失败]`, error);
@@ -2473,11 +2520,11 @@
             console.log('⏳ [最终缓冲] 等待数据完全写入硬盘...');
             await new Promise(r => setTimeout(r, 2000));
 
-             if (!window.Gaigai.stopBatch) {
+            if (!window.Gaigai.stopBatch) {
                 const msg = failedBatches.length > 0
                     ? `⚠️ 完成，但有 ${failedBatches.length} 批失败`
                     : `✅ 分批总结全部完成`;
-                
+
                 if (typeof toastr !== 'undefined') {
                     // 如果有失败，用 warning 颜色；全成功用 success 颜色
                     failedBatches.length > 0 ? toastr.warning(msg) : toastr.success(msg);
@@ -2520,53 +2567,53 @@
                     return;
                 }
 
-            // 1. 解析目标索引
-            let targetIndices = [];
-            const totalRows = summaryTable.r.length;
+                // 1. 解析目标索引
+                let targetIndices = [];
+                const totalRows = summaryTable.r.length;
 
-            if (target === 'all') {
-                targetIndices = Array.from({ length: totalRows }, (_, i) => i);
-            } else if (target === 'last') {
-                targetIndices = [totalRows - 1];
-            } else if (target === 'specific' || target === 'range') {
-                // 解析 "2" 或 "2-5"
-                const parts = rangeInput.split(/[-–,]/); // 支持 - 或 , 分隔
-                let start = parseInt(parts[0]);
-                let end = parts.length > 1 ? parseInt(parts[1]) : start;
+                if (target === 'all') {
+                    targetIndices = Array.from({ length: totalRows }, (_, i) => i);
+                } else if (target === 'last') {
+                    targetIndices = [totalRows - 1];
+                } else if (target === 'specific' || target === 'range') {
+                    // 解析 "2" 或 "2-5"
+                    const parts = rangeInput.split(/[-–,]/); // 支持 - 或 , 分隔
+                    let start = parseInt(parts[0]);
+                    let end = parts.length > 1 ? parseInt(parts[1]) : start;
 
-                if (isNaN(start)) start = 1;
-                if (isNaN(end)) end = start;
+                    if (isNaN(start)) start = 1;
+                    if (isNaN(end)) end = start;
 
-                // 修正大小关系和边界
-                if (start > end) [start, end] = [end, start];
-                start = Math.max(1, start);
-                end = Math.min(totalRows, end);
+                    // 修正大小关系和边界
+                    if (start > end) [start, end] = [end, start];
+                    start = Math.max(1, start);
+                    end = Math.min(totalRows, end);
 
-                for (let i = start; i <= end; i++) {
-                    targetIndices.push(i - 1); // 转为 0-based 索引
+                    for (let i = start; i <= end; i++) {
+                        targetIndices.push(i - 1); // 转为 0-based 索引
+                    }
                 }
-            }
 
-            if (targetIndices.length === 0) {
-                await window.Gaigai.customAlert('⚠️ 有效范围为空！', '错误');
-                return;
-            }
+                if (targetIndices.length === 0) {
+                    await window.Gaigai.customAlert('⚠️ 有效范围为空！', '错误');
+                    return;
+                }
 
-            console.log(`✨ [优化] 目标索引: ${targetIndices.join(', ')}`);
+                console.log(`✨ [优化] 目标索引: ${targetIndices.join(', ')}`);
 
-            // 🆕 2. 检查是否启用分批模式
-            const batchMode = $('#gg_opt_batch_mode').is(':checked');
-            const batchStep = parseInt($('#gg_opt_batch_step').val()) || 5;
+                // 🆕 2. 检查是否启用分批模式
+                const batchMode = $('#gg_opt_batch_mode').is(':checked');
+                const batchStep = parseInt($('#gg_opt_batch_step').val()) || 5;
 
-            if (batchMode && targetIndices.length > batchStep) {
-                // 🔄 分批执行模式
-                console.log(`📦 [分批优化] 启用分批模式，每批 ${batchStep} 页，共 ${targetIndices.length} 页`);
-                await this._optimizeSummaryBatch(targetIndices, userPrompt, batchStep, initialSessionId);
-            } else {
-                // 🚀 单次执行模式（原有逻辑）
-                console.log(`🚀 [单次优化] 一次性处理 ${targetIndices.length} 页`);
-                await this._optimizeSummarySingle(targetIndices, userPrompt, initialSessionId);
-            }
+                if (batchMode && targetIndices.length > batchStep) {
+                    // 🔄 分批执行模式
+                    console.log(`📦 [分批优化] 启用分批模式，每批 ${batchStep} 页，共 ${targetIndices.length} 页`);
+                    await this._optimizeSummaryBatch(targetIndices, userPrompt, batchStep, initialSessionId);
+                } else {
+                    // 🚀 单次执行模式（原有逻辑）
+                    console.log(`🚀 [单次优化] 一次性处理 ${targetIndices.length} 页`);
+                    await this._optimizeSummarySingle(targetIndices, userPrompt, initialSessionId);
+                }
 
             } finally {
                 // ✅ 无论成功还是失败，最后都要解锁
@@ -2698,7 +2745,7 @@
 
                     // 容错：如果分割失败，尝试用 --- 分割
                     if (segments.length < targetIndices.length) {
-                         segments = rawText.split(/\n*---+\n*/).filter(s => s.trim());
+                        segments = rawText.split(/\n*---+\n*/).filter(s => s.trim());
                     }
                 } else {
                     segments = [rawText];
@@ -2713,7 +2760,7 @@
                         '格式警告'
                     )) {
                         // 继续执行，将整个文本作为第一个元素，用户自己去复制粘贴
-                        if(segments.length === 0) segments = [rawText];
+                        if (segments.length === 0) segments = [rawText];
                     } else {
                         return;
                     }
@@ -2765,7 +2812,7 @@
             const updateStatus = (text, color = null) => {
                 const $status = $('#gg_opt_status');
                 if ($status.length > 0) {
-                    $status.text(text).css(color ? {color} : {});
+                    $status.text(text).css(color ? { color } : {});
                 }
             };
 
@@ -3066,7 +3113,7 @@
                     });
 
                     // 追加新行按钮
-                    $('#gg_opt_append').on('click', async function() {
+                    $('#gg_opt_append').on('click', async function () {
                         let finalContent = $('#gg_opt_result_editor').val().trim();
                         if (!finalContent) return;
 
@@ -3144,7 +3191,7 @@
                     });
 
                     // 覆盖按钮
-                    $('#gg_opt_replace').on('click', async function() {
+                    $('#gg_opt_replace').on('click', async function () {
                         let finalContent = $('#gg_opt_result_editor').val().trim();
                         if (!finalContent) return;
 
