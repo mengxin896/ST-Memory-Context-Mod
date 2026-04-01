@@ -2011,7 +2011,7 @@
                 const borderColor = isSelected ? '#4CAF50' : 'rgba(255,255,255,0.1)'; // ✅ 选中时高亮
 
                 return `
-                <div class="gg-book-item" data - id="${bookId}" style="border: 2px solid ${borderColor}; border-radius: 4px; padding: 10px; margin-bottom: 8px; background: rgba(255,255,255,0.02); cursor: pointer; position: relative;">
+                <div class="gg-book-item" data-id="${bookId}" style="border: 2px solid ${borderColor}; border-radius: 4px; padding: 10px; margin-bottom: 8px; background: rgba(255,255,255,0.02); cursor: pointer; position: relative;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <input type="checkbox" class="gg-book-checkbox" data-id="${bookId}" ${isActive ? 'checked' : ''} style="transform: scale(1.2); cursor: pointer;" />
                         <div style="flex: 1; min-width: 0;">
@@ -2052,7 +2052,7 @@
 
             return `
                 <div style="display: flex; flex-direction: column; height: 100%;">
-                    < !--书籍标题 -->
+                    <!-- 书籍标题 -->
                     <div style="margin-bottom: 15px;">
                         <div style="font-size: 18px; font-weight: bold; color: ${UI.tc}; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
                             <span>${this._escapeHtml(book.name)}</span>
@@ -2290,7 +2290,7 @@
 
                 // 标题栏
                 const $hd = $('<div>', { class: 'g-hd' });
-                $hd.append(`< h3 style="color:${UI.tc}; flex:1;"> ${this._escapeHtml(title)}</h3 > `);
+                $hd.append(`<h3 style="color:${UI.tc}; flex:1;">${this._escapeHtml(title)}</h3>`);
 
                 // 关闭按钮
                 const $x = $('<button>', {
@@ -2389,7 +2389,7 @@
 
                 // 标题栏
                 const $hd = $('<div>', { class: 'g-hd' });
-                $hd.append(`< h3 style="color:${UI.tc}; flex:1;"> ${this._escapeHtml(title)}</h3 > `);
+                $hd.append(`<h3 style="color:${UI.tc}; flex:1;">${this._escapeHtml(title)}</h3>`);
 
                 // 关闭按钮
                 const $x = $('<button>', {

@@ -1211,6 +1211,23 @@
                         if (C.customTables && Array.isArray(C.customTables) && C.customTables[idx]) {
                             C.customTables[idx].c = [...tb.c];
                         }
+                    } else {
+                        // ✅ [新增迁移] 如果已经有 #外貌，但是不在 #年龄 后面，强制移动
+                        const ageIdx = tb.c.indexOf('#年龄');
+                        const appearanceIdx = tb.c.indexOf('#外貌');
+                        if (ageIdx !== -1 && appearanceIdx !== -1 && appearanceIdx !== ageIdx + 1) {
+                            // 移除原来的 #外貌
+                            tb.c.splice(appearanceIdx, 1);
+                            // 重新找 #年龄 的位置（以免被上面的移除影响）
+                            const newAgeIdx = tb.c.indexOf('#年龄');
+                            // 插入到 #年龄 后面
+                            tb.c.splice(newAgeIdx + 1, 0, '#外貌');
+                            console.log(`🔄 [自动迁移] 人物档案表已自动将 #外貌 移至 #年龄 之后`);
+                            // 同步更新 C.customTables
+                            if (C.customTables && Array.isArray(C.customTables) && C.customTables[idx]) {
+                                C.customTables[idx].c = [...tb.c];
+                            }
+                        }
                     }
                 }
             });
